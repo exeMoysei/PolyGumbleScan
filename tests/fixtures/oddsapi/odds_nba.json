@@ -1,0 +1,91 @@
+{
+ "_note": "TEST DATA \u2014 synthetic fixture in the provider's documented response format. Not real prices.",
+ "data": [
+  {
+   "id": "oa-lalbos",
+   "sport_key": "basketball_nba",
+   "sport_title": "NBA",
+   "commence_time": "2026-01-16T00:40:00Z",
+   "home_team": "Boston Celtics",
+   "away_team": "Los Angeles Lakers",
+   "bookmakers": [
+    {
+     "key": "pinnacle",
+     "title": "Pinnacle",
+     "last_update": "2026-01-15T23:59:30Z",
+     "link": "https://example.invalid/pinnacle",
+     "markets": [
+      {
+       "key": "h2h",
+       "last_update": "2026-01-15T23:59:30Z",
+       "outcomes": [
+        {
+         "name": "Boston Celtics",
+         "price": 1.62
+        },
+        {
+         "name": "Los Angeles Lakers",
+         "price": 2.45
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "key": "testbook",
+     "title": "TestBook",
+     "last_update": "2026-01-15T23:59:00Z",
+     "link": "https://example.invalid/testbook",
+     "markets": [
+      {
+       "key": "h2h",
+       "last_update": "2026-01-15T23:59:00Z",
+       "outcomes": [
+        {
+         "name": "Boston Celtics",
+         "price": 1.8
+        },
+        {
+         "name": "Los Angeles Lakers",
+         "price": 2.2
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "oa-nykmia",
+   "sport_key": "basketball_nba",
+   "sport_title": "NBA",
+   "commence_time": "2026-01-16T01:05:00Z",
+   "home_team": "Miami Heat",
+   "away_team": "New York Knicks",
+   "bookmakers": [
+    {
+     "key": "pinnacle",
+     "title": "Pinnacle",
+     "last_update": "2026-01-15T23:59:30Z",
+     "link": "https://example.invalid/pinnacle",
+     "markets": [
+      {
+       "key": "h2h",
+       "last_update": "2026-01-15T23:59:30Z",
+       "outcomes": [
+        {
+         "name": "Miami Heat",
+         "price": 1.95
+        },
+        {
+         "name": "New York Knicks",
+         "price": 1.95
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

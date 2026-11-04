@@ -1,0 +1,66 @@
+{
+ "_note": "TEST DATA \u2014 synthetic fixture in the provider's documented response format. Not real prices.",
+ "cursor": "",
+ "events": [
+  {
+   "event_ticker": "KXNBAGAME-26JAN15LALBOS",
+   "series_ticker": "KXNBAGAME",
+   "title": "Los Angeles L at Boston",
+   "sub_title": "LAL at BOS (Jan 15)",
+   "markets": [
+    {
+     "ticker": "KXNBAGAME-26JAN15LALBOS-LAL",
+     "event_ticker": "KXNBAGAME-26JAN15LALBOS",
+     "status": "active",
+     "title": "Los Angeles L at Boston Winner?",
+     "yes_sub_title": "Los Angeles L",
+     "no_sub_title": "Los Angeles L",
+     "rules_primary": "If Los Angeles L wins the Los Angeles L at Boston professional basketball game originally scheduled for Jan 15, 2026, including overtime, then the market resolves to Yes.",
+     "rules_secondary": "If the game is postponed, the market will remain open until the game has been completed. If the game is canceled and not played, the market will resolve 50-50. Source: official results of the NBA.",
+     "close_time": "2026-01-30T03:30:00Z"
+    },
+    {
+     "ticker": "KXNBAGAME-26JAN15LALBOS-BOS",
+     "event_ticker": "KXNBAGAME-26JAN15LALBOS",
+     "status": "active",
+     "title": "Los Angeles L at Boston Winner?",
+     "yes_sub_title": "Boston",
+     "no_sub_title": "Boston",
+     "rules_primary": "If Boston wins the Los Angeles L at Boston professional basketball game originally scheduled for Jan 15, 2026, including overtime, then the market resolves to Yes.",
+     "rules_secondary": "If the game is postponed, the market will remain open until the game has been completed. If the game is canceled and not played, the market will resolve 50-50. Source: official results of the NBA.",
+     "close_time": "2026-01-30T03:30:00Z"
+    }
+   ]
+  },
+  {
+   "event_ticker": "KXNBAGAME-26JAN15DENUTA",
+   "series_ticker": "KXNBAGAME",
+   "title": "Denver at Utah",
+   "sub_title": "DEN at UTA (Jan 15)",
+   "markets": [
+    {
+     "ticker": "KXNBAGAME-26JAN15DENUTA-DEN",
+     "event_ticker": "KXNBAGAME-26JAN15DENUTA",
+     "status": "active",
+     "title": "Denver at Utah Winner?",
+     "yes_sub_title": "Denver",
+     "no_sub_title": "Denver",
+     "rules_primary": "If Denver wins the Los Angeles L at Boston professional basketball game originally scheduled for Jan 15, 2026, including overtime, then the market resolves to Yes.",
+     "rules_secondary": "If the game is postponed, the market will remain open until the game has been completed. If the game is canceled and not played, the market will resolve 50-50. Source: official results of the NBA.",
+     "close_time": "2026-01-30T03:30:00Z"
+    },
+    {
+     "ticker": "KXNBAGAME-26JAN15DENUTA-UTA",
+     "event_ticker": "KXNBAGAME-26JAN15DENUTA",
+     "status": "active",
+     "title": "Denver at Utah Winner?",
+     "yes_sub_title": "Utah",
+     "no_sub_title": "Utah",
+     "rules_primary": "If Utah wins the Los Angeles L at Boston professional basketball game originally scheduled for Jan 15, 2026, including overtime, then the market resolves to Yes.",
+     "rules_secondary": "If the game is postponed, the market will remain open until the game has been completed. If the game is canceled and not played, the market will resolve 50-50. Source: official results of the NBA.",
+     "close_time": "2026-01-30T03:30:00Z"
+    }
+   ]
+  }
+ ]
+}
