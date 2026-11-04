@@ -35,20 +35,21 @@ class _Clock:
     """Fixed ``now`` for tests; ``live`` restamps quotes with the wall clock and shifts event dates by whole
     days so that the fixture games are always in the future (staging smoke tests on the VPS)."""
 
+    # first exact-time game in the bundled fixtures; every adapter shifts by the same whole number of days
+    ANCHOR = datetime(2026, 1, 16, 0, 30, tzinfo=UTC)
+
     def __init__(self, now: datetime | None, live: bool) -> None:
         self.fixed, self.live = now, live
+        # computed once per process so event times (and approvals tied to them) stay stable while running
+        self.days = max(0, math.ceil((datetime.now(UTC) + timedelta(hours=3) - self.ANCHOR) / timedelta(days=1)))
 
     def now(self) -> datetime | None:
         return datetime.now(UTC) if self.live else self.fixed
 
-    # first exact-time game in the bundled fixtures; every adapter shifts by the same whole number of days
-    ANCHOR = datetime(2026, 1, 16, 0, 30, tzinfo=UTC)
-
     def shift(self, events: list[ProviderEvent]) -> list[ProviderEvent]:
         if not self.live or not events:
             return events
-        days = max(0, math.ceil((datetime.now(UTC) + timedelta(hours=3) - self.ANCHOR) / timedelta(days=1)))
-        return [replace(e, start_at=e.start_at + timedelta(days=days)) for e in events]
+        return [replace(e, start_at=e.start_at + timedelta(days=self.days)) for e in events]
 
 
 class FixturePolymarket:

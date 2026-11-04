@@ -260,7 +260,7 @@ async def sync_mapping(
     changed_params = row.params_fingerprint != p.fingerprint or row.rules_version != p.rules_version
     row.rules_version, row.params, row.params_fingerprint = p.rules_version, p.params, p.fingerprint
     row.canonical_market_key, row.canonical_event_id, row.proposal = p.canonical_market_key, p.event_id, doc
-    if rv.status == MappingStatus.INVALIDATED:
+    if prev == MappingStatus.APPROVED and rv.status == MappingStatus.INVALIDATED:
         row.status, row.reasons, row.decision_reason = rv.status.value, [rv.reason or "changed"], rv.reason
         return MappingChange(
             row.id,

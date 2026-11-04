@@ -184,17 +184,19 @@ class ScanService:
                     log.exception("full scan failed")
                 last_full = loop_now
             if isinstance(self.store, RedisQuoteStore):
-                last_id, changed = await self.store.read_changes(last_id, block_ms=1000)
-                if changed:
-                    await asyncio.sleep(self.settings.scan_debounce_ms / 1000)  # coalesce bursts
-                    last_id, more = await self.store.read_changes(last_id, block_ms=1)
-                    changed |= more
-                    keys = set().union(*(market_to_keys.get(m, set()) for m in changed))
-                    if keys:
-                        try:
+                try:
+                    last_id, changed = await self.store.read_changes(last_id, block_ms=1000)
+                    if changed:
+                        await asyncio.sleep(self.settings.scan_debounce_ms / 1000)  # coalesce bursts
+                        last_id, more = await self.store.read_changes(last_id, block_ms=1)
+                        changed |= more
+                        keys = set().union(*(market_to_keys.get(m, set()) for m in changed))
+                        if keys:
                             await self.scan(keys)
-                        except Exception:
-                            log.exception("incremental scan failed")
+                except Exception:  # Redis restart / outage: back off, the full scan catches up
+                    log.exception("incremental scan failed")
+                    last_id = "$"
+                    await asyncio.sleep(2)
             else:
                 await asyncio.sleep(1)
 

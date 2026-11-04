@@ -292,3 +292,47 @@ async def test_data_gap_does_not_renotify_identical_signal(sessions, redis) -> N
         assert (
             await s.execute(select(func.count()).select_from(Outbox).where(Outbox.kind == "signal"))
         ).scalar() == sent_before
+
+
+async def test_invalidated_mapping_is_reported_once_and_reopens_on_new_params(sessions, redis) -> None:  # type: ignore[no-untyped-def]
+    _, _, ingest, _ = await _bootstrap(sessions, redis)
+    await _approve_all(sessions)
+    cat = ingest.catalogs["polymarket"]
+    shifted = [replace(e, start_at=e.start_at + timedelta(minutes=30)) for e in cat.events]
+
+    class Frozen:
+        id = "polymarket"
+        capabilities = ingest.adapters[0].capabilities
+
+        def __init__(self, events):  # type: ignore[no-untyped-def]
+            self.events = events
+
+        async def discover(self):  # type: ignore[no-untyped-def]
+            return replace(cat, events=self.events)
+
+        async def snapshot(self, markets):  # type: ignore[no-untyped-def]
+            return []
+
+        async def aclose(self) -> None:
+            return None
+
+    ingest.adapters[0] = Frozen(shifted)  # type: ignore[assignment]
+    await ingest.discover_once(NOW)
+    async with sessions() as s:
+        inv = (
+            await s.execute(
+                select(func.count()).select_from(MarketMapping).where(MarketMapping.status == "invalidated")
+            )
+        ).scalar()
+        admin1 = (await s.execute(select(func.count()).select_from(Outbox).where(Outbox.kind == "admin"))).scalar()
+    assert inv and inv > 0
+    await ingest.discover_once(NOW + timedelta(minutes=2))  # nothing new changed -> no new admin message
+    async with sessions() as s:
+        admin2 = (await s.execute(select(func.count()).select_from(Outbox).where(Outbox.kind == "admin"))).scalar()
+    assert admin2 == admin1
+    # the event start changes again (now Polymarket is the earliest) -> back to the review queue
+    ingest.adapters[0] = Frozen([replace(e, start_at=e.start_at + timedelta(minutes=-30)) for e in cat.events])  # type: ignore[assignment]
+    await ingest.discover_once(NOW + timedelta(minutes=4))
+    async with sessions() as s:
+        statuses = set((await s.execute(select(MarketMapping.status))).scalars())
+    assert statuses & {"pending", "needs_review"}

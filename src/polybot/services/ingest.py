@@ -131,7 +131,12 @@ class IngestService:
             metrics.FEED_ERRORS.labels(adapter.id, "snapshot").inc()
             log.exception("snapshot failed", extra={"provider": adapter.id})
             return 0
-        return await self._store_quotes(quotes)
+        try:
+            return await self._store_quotes(quotes)
+        except Exception:  # Redis/PostgreSQL outage must not kill the polling loop
+            metrics.FEED_ERRORS.labels(adapter.id, "store").inc()
+            log.exception("storing quotes failed", extra={"provider": adapter.id})
+            return 0
 
     async def _store_quotes(self, quotes: Sequence[Quote]) -> int:
         ttl = {k: v * 1000 for k, v in self.settings.quote_ttl_s.items()}
@@ -172,7 +177,10 @@ class IngestService:
 
     async def _stream_loop(self, a: Adapter) -> None:
         async def on_quote(q: Quote) -> None:
-            await self._store_quotes([q])
+            try:
+                await self._store_quotes([q])
+            except Exception:
+                log.exception("storing streamed quote failed")
 
         while True:
             markets = [
@@ -195,10 +203,14 @@ class IngestService:
 
     async def _quote_loop(self, a: Adapter) -> None:
         interval = self.settings.quote_interval_s.get(a.id, 30)
+        loop = asyncio.get_running_loop()
         while True:
-            started = asyncio.get_running_loop().time()
-            await self.quotes_once(a)
-            await asyncio.sleep(max(1.0, interval - (asyncio.get_running_loop().time() - started)))
+            started = loop.time()
+            try:
+                await self.quotes_once(a)
+            except Exception:
+                log.exception("quote loop error", extra={"provider": a.id})
+            await asyncio.sleep(max(1.0, interval - (loop.time() - started)))
 
     async def _odds_loop(self, a: Adapter) -> None:
         interval = self.settings.quote_interval_s.get(a.id, 300)

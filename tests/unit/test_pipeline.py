@@ -119,3 +119,21 @@ async def test_live_fixture_clock_shifts_events_into_future() -> None:
     report, scan = run_offline(world, REG, ScanConfig(budget=Decimal(200)), fx(now), now, approve_all)
     assert any(c.id.endswith("bos-lal") and len(c.providers) == 3 for c in report.clusters)
     assert any(d.verdict == Verdict.SIGNAL for d in scan.drafts)
+
+
+async def test_quote_polling_survives_cache_outage() -> None:
+    from polybot.services.ingest import IngestService
+    from polybot.settings import Settings
+
+    class BrokenStore:
+        async def put_many(self, quotes, ttl_ms):  # type: ignore[no-untyped-def]
+            raise ConnectionError("redis down")
+
+        async def get_markets(self, markets):  # type: ignore[no-untyped-def]
+            raise ConnectionError("redis down")
+
+    adapters = fixture_adapters(FIX, ["nba"], now=NOW)
+    svc = IngestService(Settings(odds_api_key=None), adapters, None, BrokenStore())  # type: ignore[arg-type]
+    svc.catalogs["polymarket"] = await adapters[0].discover()
+    svc.approved = {("polymarket", m.external_id) for m in svc.catalogs["polymarket"].markets}
+    assert await svc.quotes_once(adapters[0]) == 0  # logged and counted, loop keeps running
