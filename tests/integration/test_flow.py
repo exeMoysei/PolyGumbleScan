@@ -261,3 +261,34 @@ async def test_recheck_updates_or_closes(sessions, redis) -> None:  # type: igno
     async with sessions() as s, s.begin():
         res = await repo.publish_draft(s, upd.draft, [], later)
     assert res.material and res.revision == 2
+
+
+async def test_data_gap_does_not_renotify_identical_signal(sessions, redis) -> None:  # type: ignore[no-untyped-def]
+    st, store, ingest, _ = await _bootstrap(sessions, redis)
+    async with sessions() as s, s.begin():
+        await repo.ensure_subscription(s, 1001, 1001, Decimal(200))
+    await _approve_all(sessions)
+    await ingest.discover_once(NOW)
+    for a in ingest.adapters:
+        await ingest.quotes_once(a)
+    scan = ScanService(st, sessions, store)
+    first = await scan.scan(now=NOW)
+    async with sessions() as s:
+        sent_before = (
+            await s.execute(select(func.count()).select_from(Outbox).where(Outbox.kind == "signal"))
+        ).scalar()
+    await redis.flushdb()  # cache lost (restart): opportunities close for missing inputs
+    assert await scan.scan(now=NOW + timedelta(seconds=10)) == []
+    async with sessions() as s:
+        assert (
+            await s.execute(select(func.count()).select_from(Opportunity).where(Opportunity.status == "active"))
+        ).scalar() == 0
+    for a in ingest.adapters:
+        await ingest.quotes_once(a)
+    again = await scan.scan(now=NOW + timedelta(seconds=20))
+    assert {d.fingerprint for d in again} == {d.fingerprint for d in first}
+    async with sessions() as s:
+        assert (await s.execute(select(func.max(Opportunity.revision)))).scalar() == 1
+        assert (
+            await s.execute(select(func.count()).select_from(Outbox).where(Outbox.kind == "signal"))
+        ).scalar() == sent_before

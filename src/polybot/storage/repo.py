@@ -471,7 +471,12 @@ class PublishResult:
 
 
 async def publish_draft(
-    s: AsyncSession, d: OpportunityDraft, subscribers: Sequence[Subscription], now: datetime, paused: bool = False
+    s: AsyncSession,
+    d: OpportunityDraft,
+    subscribers: Sequence[Subscription],
+    now: datetime,
+    paused: bool = False,
+    reactivate_window: timedelta = timedelta(minutes=30),
 ) -> PublishResult:
     """Insert/refresh an opportunity and enqueue notifications in the SAME transaction."""
     payload = draft_payload(d)
@@ -488,15 +493,36 @@ async def publish_draft(
     if cur is not None and cur.signature == sig:
         cur.expires_at, cur.updated_at = d.expires_at, now
         return PublishResult(cur.id, cur.revision, False, False, 0)
+    if cur is None:
+        # identical revision closed by a data gap (restart, feed outage, TTL): reactivate, do not re-notify
+        last = (
+            await s.execute(
+                select(Opportunity)
+                .where(Opportunity.fingerprint == d.fingerprint)
+                .order_by(Opportunity.revision.desc())
+                .limit(1)
+                .with_for_update()
+            )
+        ).scalar_one_or_none()
+        if (
+            last is not None
+            and last.signature == sig
+            and last.closed_at is not None
+            and now - last.closed_at <= reactivate_window
+            and not str(last.closed_reason or "").startswith(("recheck", "mapping"))
+        ):
+            last.status, last.closed_reason, last.closed_at = OpportunityStatus.ACTIVE.value, None, None
+            last.expires_at, last.updated_at = d.expires_at, now
+            return PublishResult(last.id, last.revision, False, False, 0)
     revision = 1
     if cur is not None:
         cur.status, cur.closed_reason, cur.closed_at = OpportunityStatus.CLOSED.value, "superseded", now
         revision = cur.revision + 1
     else:
-        last = (
+        last_rev = (
             await s.execute(select(func.max(Opportunity.revision)).where(Opportunity.fingerprint == d.fingerprint))
         ).scalar()
-        revision = (last or 0) + 1
+        revision = (last_rev or 0) + 1
     payload["revision"] = revision
     opp = Opportunity(
         fingerprint=d.fingerprint,

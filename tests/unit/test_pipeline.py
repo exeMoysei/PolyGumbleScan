@@ -107,3 +107,15 @@ async def test_recalculation_is_deterministic() -> None:
     _, b = await run()
     assert [d.fingerprint for d in a.drafts] == [d.fingerprint for d in b.drafts]
     assert [d.material_signature() for d in a.drafts] == [d.material_signature() for d in b.drafts]
+
+
+async def test_live_fixture_clock_shifts_events_into_future() -> None:
+    from datetime import UTC as _UTC
+    from datetime import datetime as _dt
+
+    world = await collect(fixture_adapters(FIX, ["nba"], live=True))
+    now = _dt.now(_UTC)
+    assert all(e.start_at > now for e in world.events if e.start_precision.value == "exact")
+    report, scan = run_offline(world, REG, ScanConfig(budget=Decimal(200)), fx(now), now, approve_all)
+    assert any(c.id.endswith("bos-lal") and len(c.providers) == 3 for c in report.clusters)
+    assert any(d.verdict == Verdict.SIGNAL for d in scan.drafts)

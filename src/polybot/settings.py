@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     tech_chat_id: int | None = None
 
     # ---------------------------------------------------------------- sources
+    # staging smoke test: replay the labelled TEST DATA fixtures with a live clock instead of real feeds
+    fixtures_dir: str | None = None
     leagues: list[str] = Field(default_factory=lambda: ["nba"])
     polymarket_enabled: bool = True
     polymarket_tags: dict[str, str] = Field(

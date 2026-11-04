@@ -18,6 +18,12 @@ SOURCE_KIND = {"polymarket": VenueKind.PREDICTION, "kalshi": VenueKind.PREDICTIO
 
 def build_adapters(settings: Settings) -> list[Adapter]:
     horizon = timedelta(hours=settings.horizon_hours)
+    if settings.fixtures_dir:
+        from pathlib import Path
+
+        from polybot.adapters.fixture import fixture_adapters
+
+        return list(fixture_adapters(Path(settings.fixtures_dir), settings.leagues, live=True))
     adapters: list[Any] = []
     if settings.polymarket_enabled:
         adapters.append(
