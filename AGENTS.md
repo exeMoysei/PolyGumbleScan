@@ -1,6 +1,7 @@
 # Инструкции для агентов (Codex, Claude Code)
 
 Продукт — PolyBot, репозиторий — exeMoysei/PolyGumbleScan. ТЗ и этапы — `docs/TODO.md`, архитектура — `docs/architecture.md`.
+План спринтов и статус issues — `docs/sprinty.md`. Документация (`README.md`, `docs/**`) ведётся на польском.
 
 ## Правила
 

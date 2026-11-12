@@ -1,18 +1,18 @@
 # Polymarket
 
-* **Каталог и правила**: Gamma API `GET /events?tag_slug=<league>&active=true&closed=false` (пагинация
-  `limit/offset`). У рынка: `outcomes` и `clobTokenIds` (JSON-строки), `gameStartTime`, `sportsMarketType`,
-  `line`, `description` (правила), `acceptingOrders`, `orderMinSize`. Слаг события `nba-lal-bos-YYYY-MM-DD`
-  даёт коды команд и дату — дополнительный сигнал сопоставления.
-* **Стакан**: CLOB `POST /books` (батч `[{token_id}]`) / `GET /book?token_id=`. Используются **asks**;
-  порядок уровней не предполагается — адаптер сортирует сам. `min_order_size`, `tick_size`.
-* **Комиссия**: `fee = C · p · r · (p·(1−p))^e` по каждому заполнению, параметры рынка `fd = {r, e, to}`;
-  если рынок их не сообщает — `POLYBOT_POLYMARKET_FEE_RATE/EXPONENT`. Округление вверх до 0.0001.
-* **Валюта**: USDC (pUSD) — конвертация в валюту бюджета по `FX_STATIC` с резервом `FX_RESERVE_BPS`.
-* **Правила (типовые спорт-рынки)**: отмена без переигровки → 50-50 (`half`), перенос → рынок ждёт
-  переигровку (`carry`), «includes overtime» для NBA. Футбол: 90 минут + компенсированное время.
-* **Streaming**: `wss://ws-subscriptions-clob.polymarket.com/ws/market` (`book` — снапшот, `price_change` —
-  дельты). Номеров последовательности нет: после переподключения стакан невалиден до нового снапшота,
-  REST-опрос остаётся страховкой. Включается `POLYBOT_POLYMARKET_WS=true`.
-* **Открытые вопросы для probe**: стабильность `conditionId`, задержка `book.timestamp`, фактические
-  параметры комиссии спорт-рынков, ограничения по регионам.
+* **Katalog i zasady**: Gamma API `GET /events?tag_slug=<liga>&active=true&closed=false` (paginacja
+  `limit/offset`). Rynek ma: `outcomes` i `clobTokenIds` (napisy JSON), `gameStartTime`, `sportsMarketType`,
+  `line`, `description` (zasady), `acceptingOrders`, `orderMinSize`. Slug wydarzenia `nba-lal-bos-RRRR-MM-DD`
+  zawiera kody drużyn i datę — dodatkowy sygnał przy dopasowaniu.
+* **Arkusz zleceń**: CLOB `POST /books` (paczka `[{token_id}]`) / `GET /book?token_id=`. Używane są **aski**;
+  kolejność poziomów nie jest zakładana — adapter sortuje sam. `min_order_size`, `tick_size`.
+* **Prowizja**: `fee = C · p · r · (p·(1−p))^e` dla każdego wypełnienia, parametry rynku `fd = {r, e, to}`;
+  jeśli rynek ich nie podaje — `POLYBOT_POLYMARKET_FEE_RATE/EXPONENT`. Zaokrąglenie w górę do 0.0001.
+* **Waluta**: USDC (pUSD) — przeliczenie na walutę budżetu wg `FX_STATIC` z rezerwą `FX_RESERVE_BPS`.
+* **Zasady (typowe rynki sportowe)**: odwołanie bez powtórki → 50-50 (`half`), przełożenie → rynek czeka na
+  rozegranie (`carry`), „includes overtime” dla NBA. Piłka nożna: 90 minut + czas doliczony.
+* **Streaming**: `wss://ws-subscriptions-clob.polymarket.com/ws/market` (`book` — zrzut, `price_change` —
+  delty). Brak numerów sekwencji: po ponownym połączeniu arkusz jest nieważny do nowego zrzutu, odpytywanie
+  REST pozostaje zabezpieczeniem. Włączane przez `POLYBOT_POLYMARKET_WS=true`.
+* **Otwarte pytania do probe**: stabilność `conditionId`, opóźnienie `book.timestamp`, faktyczne parametry
+  prowizji rynków sportowych, ograniczenia regionalne.

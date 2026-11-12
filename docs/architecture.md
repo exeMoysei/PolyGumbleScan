@@ -1,58 +1,66 @@
-# Архитектура PolyBot
+# Architektura PolyBot
 
-Модульный монолит: один пакет и один образ, три процесса (`run-ingest`, `run-scan`, `run-bot`), которые
-масштабируются по отдельности. PostgreSQL — источник истины; Redis — только горячие котировки
-(восстанавливаются из снапшотов площадок) и поток изменений для сканера.
+Modularny monolit: jeden pakiet i jeden obraz, trzy procesy (`run-ingest`, `run-scan`, `run-bot`) skalowane
+niezależnie. PostgreSQL jest źródłem prawdy; Redis przechowuje tylko bieżące kursy (odtwarzane ze zrzutów
+platform) oraz strumień zmian dla skanera.
 
-## Поток данных
+## Przepływ danych
 
-1. **Discovery** (`services/ingest.py`, раз в `DISCOVERY_INTERVAL_S`): каждый адаптер отдаёт
-   `ProviderEvent` и `ProviderMarket` с разобранными правилами (`RuleSet`). Сбой одного фида не
-   останавливает остальные.
-2. **Сопоставление событий** (`matching/events.py`):
-   * имя → стабильный ID команды (`TeamRegistry`): точный алиас → код площадки → «содержит ровно один
-     алиас» → нечёткое сравнение (rapidfuzz, порог 88 и отрыв от второго кандидата 6). Нечёткое совпадение
-     никогда не считается сильным и всегда уходит на проверку. Неоднозначные алиасы (например «Los Angeles»
-     в NBA) удаляются из словаря автоматически;
-   * группировка по `(лига, неупорядоченная пара команд)`, затем по времени старта: точные времена в окне
-     3 ч, ближайший кластер, не более одного события площадки в кластере;
-   * события «только дата» (Kalshi) прикрепляются к единственному матчу этого локального дня лиги;
-     при даблхедере — по номеру игры, иначе отдельный кластер `ambiguous_doubleheader`;
-   * роли хозяев/гостей голосованием площадок, конфликт → `role_conflict`;
-   * уверенность (`confidence`) снижается за нечёткие имена, расхождение времени, конфликт ролей.
-3. **Сопоставление рынков** (`matching/markets.py`): ключ `событие|тип|период[|линия]`. Исходы
-   превращаются в канонические `Selection` (в каких обычных сценариях выигрывают, где возврат, где
-   результат зависит от правил площадки). «Нет» на бинарном контракте = все сценарии кроме «да».
-   Отсутствующие правила (`unknown`) и правила по умолчанию → `needs_review`.
-4. **Ручная проверка**: `/pending` в Telegram или `polybot mappings`. Одобрение хранит версию правил и
-   параметры (команды, время, тип, период, линия). Любое изменение → `invalidated`, активные сигналы
-   по ключу закрываются.
-5. **Котировки**: только для одобренных рынков. Redis-кэш пишет монотонно (Lua): более старая или
-   повторная котировка отбрасывается. Каждая запись — событие в `pb:changes`. История — в
-   `quote_snapshots` (ограниченный срок).
-6. **Скан** (`services/scan.py` → `services/scanner.py`): пересчёт ключей, по которым пришли изменения
-   (с debounce), полный пересчёт раз в 30 с (TTL). Фильтры: статус, TTL по источнику, разрыв времени
-   между ногами, FX, старт события. Комбинации 2–3 ног, покрывающие все обычные сценарии без
-   пересечений, на разных площадках; маршрут должен быть включён.
-7. **Публикация**: перед записью проверяется, что входные котировки не изменились. Opportunity и
-   outbox пишутся одной транзакцией; дедуп по `(чат, fingerprint, ревизия)`; новая ревизия — только при
-   существенном изменении (вердикт, размеры, цены, прибыль с шагом 0.5). Идентичный сигнал, закрытый
-   из-за пропажи данных (рестарт, сбой фида), реактивируется без повторного уведомления.
-8. **Уведомления** (`telegram/notifier.py`): claim с lease (`FOR UPDATE SKIP LOCKED`), backoff, отказ
-   после истечения сигнала; при неопределённом ответе Telegram — повтор с записью в лог (возможен дубль).
+1. **Discovery** (`services/ingest.py`, co `DISCOVERY_INTERVAL_S`): każdy adapter zwraca `ProviderEvent`
+   i `ProviderMarket` z rozpoznanymi zasadami (`RuleSet`). Awaria jednego źródła nie zatrzymuje pozostałych.
+2. **Dopasowanie wydarzeń** (`matching/events.py`):
+   * nazwa → stabilne ID drużyny (`TeamRegistry`): dokładny alias → kod platformy → „zawiera dokładnie jeden
+     alias” → porównanie rozmyte (rapidfuzz, próg 88 i odstęp 6 od drugiego kandydata). Dopasowanie rozmyte
+     nigdy nie jest uznawane za pewne i zawsze trafia do weryfikacji. Niejednoznaczne aliasy (np. „Los Angeles”
+     w NBA) są automatycznie usuwane ze słownika;
+   * grupowanie po `(liga, nieuporządkowana para drużyn)`, potem po czasie startu: dokładne czasy w oknie 3 h,
+     najbliższy klaster, najwyżej jedno wydarzenie danej platformy w klastrze;
+   * wydarzenia „tylko data” (Kalshi) są dołączane do jedynego meczu tego lokalnego dnia ligi; przy
+     doubleheaderze — po numerze gry, w przeciwnym razie osobny klaster `ambiguous_doubleheader`;
+   * role gospodarz/gość ustalane głosowaniem platform, konflikt → `role_conflict`;
+   * pewność (`confidence`) spada za rozmyte nazwy, rozbieżność czasu i konflikt ról.
+3. **Dopasowanie rynków** (`matching/markets.py`): klucz `wydarzenie|typ|okres[|linia]`. Wyniki zamieniane są
+   na kanoniczne `Selection` (w których zwykłych scenariuszach wygrywają, gdzie jest zwrot, gdzie wynik zależy
+   od zasad platformy). „Nie” na kontrakcie binarnym = wszystkie scenariusze poza „tak”. Brakujące zasady
+   (`unknown`) i zasady domyślne → `needs_review`.
+4. **Ręczna weryfikacja**: `/pending` w Telegramie albo `polybot mappings`. Akceptacja zapisuje wersję zasad
+   i parametry (drużyny, czas, typ, okres, linia). Każda zmiana → `invalidated`, aktywne sygnały dla klucza
+   są zamykane.
+5. **Kursy**: tylko dla zatwierdzonych rynków. Zapis do Redisa jest monotoniczny (Lua): starszy lub powtórzony
+   kurs jest odrzucany. Każdy zapis to zdarzenie w `pb:changes`. Historia — w `quote_snapshots`
+   (ograniczony czas przechowywania).
+6. **Skan** (`services/scan.py` → `services/scanner.py`): przeliczenie kluczy, dla których przyszły zmiany
+   (z debounce), pełne przeliczenie co 30 s (TTL). Filtry: status, TTL per źródło, różnica czasu między nogami,
+   kurs walut, start wydarzenia. Kombinacje 2–3 nóg pokrywające wszystkie zwykłe scenariusze bez nakładania się,
+   na różnych platformach; trasa musi być włączona.
+7. **Publikacja**: przed zapisem sprawdzane jest, czy kursy wejściowe się nie zmieniły. Okazja i wpisy outbox
+   zapisywane są w jednej transakcji; deduplikacja po `(czat, fingerprint, rewizja)`; nowa rewizja tylko przy
+   istotnej zmianie (werdykt, rozmiary, ceny, zysk w krokach 0.5). Identyczny sygnał zamknięty z powodu braku
+   danych (restart, awaria źródła) jest reaktywowany bez ponownego powiadomienia.
+8. **Powiadomienia** (`telegram/notifier.py`): pobranie z dzierżawą (`FOR UPDATE SKIP LOCKED`), backoff,
+   rezygnacja po wygaśnięciu sygnału; przy niepewnej odpowiedzi Telegrama — ponowienie z wpisem w logu
+   (możliwy duplikat).
 
-## Математика
+## Matematyka
 
-* Предварительный отбор для линейного разбиения: `S = Σ 1/dᵢ` по лучшим ценам с комиссией — нижняя
-  граница стоимости, поэтому `S ≥ 1` надёжно отсекает. `S < 1` — только кандидат для решателя.
-* Решение — по сценариям: `pnl[s] = Σ cashflow(leg, s) − Σ all_in_cost(leg)`, где стоимость — проход по
-  уровням стакана + комиссия по модели площадки + FX с резервом против пользователя; выплата букмекера
-  округляется вниз до цента; при возврате возвращается только номинал, комиссии — нет.
-* Решатель: якорь — нога с наименьшим числом допустимых размеров; для остальных — соседние допустимые
-  размеры вокруг точки равной выплаты и границы. Перебор ограничен (`solver_limit`). Выбор: максимум
-  минимальной прибыли в обычных сценариях, при равенстве — меньшее вложение. Планы без убытка в
-  описанных исключениях — «обычный» сигнал; лучший план без этого ограничения — отдельный «кандидат».
-* Перенос: если обе позиции «ждут переигровки», сценарий равен худшему обычному; если одна сторона
-  аннулирована, оставшаяся позиция в худшем случае проигрывает.
-* Вердикт: сигнал только при минимуме выше порогов в деньгах и в процентах, известных лимитах, свежести
-  от самой площадки и отсутствии убытка в исключениях. Иначе — кандидат с причинами.
+* Wstępna selekcja dla podziału liniowego: `S = Σ 1/dᵢ` po najlepszych cenach z prowizją — to dolna granica
+  kosztu, więc `S ≥ 1` pewnie odrzuca. `S < 1` to tylko kandydat dla solvera.
+* Decyzja zapada na scenariuszach: `pnl[s] = Σ cashflow(noga, s) − Σ koszt_całkowity(noga)`, gdzie koszt to
+  przejście po poziomach arkusza + prowizja wg modelu platformy + kurs walut z rezerwą na niekorzyść
+  użytkownika; wypłata bukmachera zaokrąglana w dół do centa; przy zwrocie wraca tylko nominał, prowizje nie.
+* Solver: kotwicą jest noga z najmniejszą liczbą dopuszczalnych rozmiarów; dla pozostałych sprawdzane są
+  sąsiednie dopuszczalne rozmiary wokół punktu równej wypłaty oraz granice. Przeszukiwanie jest ograniczone
+  (`solver_limit`). Wybór: maksimum najmniejszego zysku w zwykłych scenariuszach, przy remisie mniejszy wkład.
+  Plany bez straty w opisanych wyjątkach dają „zwykły” sygnał; najlepszy plan bez tego ograniczenia — osobnego
+  „kandydata”.
+* Przełożenie: jeśli obie pozycje „czekają na rozegranie”, scenariusz równa się najgorszemu zwykłemu; jeśli
+  jedna strona jest anulowana, pozostała pozycja w najgorszym razie przegrywa.
+* Werdykt: sygnał tylko wtedy, gdy minimum przekracza progi kwotowy i procentowy, limity są znane, świeżość
+  potwierdza sama platforma i nie ma straty w wyjątkach. W przeciwnym razie — kandydat z listą powodów.
+
+## Model danych (PostgreSQL)
+
+`providers`, `canonical_events`, `provider_events`, `rule_sets`, `markets`, `outcomes`, `market_mappings`,
+`quote_snapshots`, `opportunities`, `scan_rejections`, `subscriptions`, `outbox`, `hidden_opportunities`,
+`system_flags`, `team_aliases`, `admin_actions`. Zewnętrzne ID są unikalne w obrębie dostawcy, kwoty i ceny to
+`NUMERIC`, daty w UTC. Schemat tworzy migracja `migrations/versions/*_0001_initial_schema.py`.

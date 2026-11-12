@@ -1,14 +1,15 @@
 # The Odds API (v4)
 
 * `GET /v4/sports/{sport}/odds?regions=<r>&markets=h2h,totals&oddsFormat=decimal&dateFormat=iso&includeLinks=true`.
-  Один запрос возвращает события, букмекеров и цены. Квота: стоимость = рынки × регионы; заголовки
-  `x-requests-remaining/used/last` сохраняются в метрику `polybot_api_quota_remaining`.
-* **Площадка** = бренд букмекера + регион: `oddsapi:<bookmaker_key>:<region>`; источник данных — `oddsapi`.
-  Регион запрашивается отдельным запросом, чтобы метка была точной.
-* На котировке хранится `bookmaker`, `last_update` (рынка или букмекера) и регион. Свежесть подтверждена
-  **только агрегатором**, лимит **unknown** → такие комбинации всегда «кандидаты».
-* `h2h` с исходом `Draw` → 1X2 (основное время); без ничьей → победитель с ОТ. `totals` — по `point`.
-* Правила букмекера — **по умолчанию** (отмена/перенос → void, ничья в 2-way NFL → push), помечены
-  `assumed` и требуют подтверждения админом. Известные лимиты задаются `POLYBOT_SPORTSBOOK_MAX_STAKE`.
-* Опрос раз в `QUOTE_INTERVAL_S.oddsapi` (по умолчанию 300 с) и только при наличии одобренных связок —
-  чтобы не тратить квоту.
+  Jedno zapytanie zwraca wydarzenia, bukmacherów i ceny. Limit: koszt = rynki × regiony; nagłówki
+  `x-requests-remaining/used/last` trafiają do metryki `polybot_api_quota_remaining`.
+* **Platforma** = marka bukmachera + region: `oddsapi:<bookmaker_key>:<region>`; źródłem danych jest `oddsapi`.
+  Każdy region jest pobierany osobnym zapytaniem, żeby etykieta była dokładna.
+* Przy kursie zapisywane są `bookmaker`, `last_update` (rynku lub bukmachera) i region. Świeżość potwierdza
+  **tylko agregator**, limit jest **unknown** → takie kombinacje to zawsze „kandydaci”.
+* `h2h` z wynikiem `Draw` → 1X2 (czas regulaminowy); bez remisu → zwycięzca z dogrywką. `totals` — wg `point`.
+* Zasady bukmachera są **domyślne** (odwołanie/przełożenie → void, remis w dwudrogowym rynku NFL → push),
+  oznaczone `assumed` i wymagają potwierdzenia przez admina. Znane limity podaje się w
+  `POLYBOT_SPORTSBOOK_MAX_STAKE`.
+* Odpytywanie co `QUOTE_INTERVAL_S.oddsapi` (domyślnie 300 s) i tylko wtedy, gdy istnieją zatwierdzone
+  powiązania — żeby nie zużywać limitu.

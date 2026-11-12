@@ -1,46 +1,51 @@
-# PolyBot (репозиторий PolyGumbleScan)
+# PolyBot (repozytorium PolyGumbleScan)
 
-PolyBot собирает рынки prediction markets (Polymarket, Kalshi) и котировки букмекеров (через The Odds API),
-сопоставляет **одно и то же событие** на разных площадках, и ищет комбинации ставок, где выплата после всех
-затрат покрывает вложения во всех обычных исходах. Отмены, переносы, ничьи и возвраты считаются отдельными
-сценариями. Результат приходит в Telegram карточкой со ставками, P&L по сценариям, возрастом цен и ссылками.
+PolyBot zbiera rynki z prediction markets (Polymarket, Kalshi) oraz kursy bukmacherów (przez The Odds API),
+dopasowuje **to samo wydarzenie** na różnych platformach i szuka kombinacji zakładów, w których wypłata po
+odliczeniu wszystkich kosztów pokrywa wkład we wszystkich zwykłych wynikach. Odwołanie meczu, przełożenie,
+remis i zwroty są liczone jako osobne scenariusze. Wynik trafia do Telegrama jako karta ze stawkami,
+wynikiem (P&L) dla każdego scenariusza, wiekiem cen i linkami.
 
-Ставки размещает пользователь. Бот не хранит средства, не торгует и не использует торговые API-ключи.
+Zakłady stawia użytkownik. Bot nie przechowuje środków, nie handluje i nie używa kluczy API do handlu.
 
-## Как это работает
+> Interfejs bota w Telegramie (komunikaty, przyciski) jest obecnie po rosyjsku. Dokumentacja jest po polsku.
+
+## Jak to działa
 
 ```
- adapters ──► ingest ──► matching ──► admin review ──► scan ──► opportunities+outbox ──► bot
- (Polymarket,   (catalog,   (команды→ID,    (Telegram       (Decimal-   (одна транзакция,     (карточки,
-  Kalshi,        котировки   события по      /pending,       решатель    дедуп по чату и       перепроверка,
-  Odds API)      → Redis)    времени, рынки) версия правил)  по сценар.) ревизии)              фильтры)
+ adaptery ──► ingest ──► dopasowanie ──► akceptacja admina ──► scan ──► okazje + outbox ──► bot
+ (Polymarket,   (katalog,   (drużyny → ID,   (Telegram /pending,   (solver    (jedna transakcja,  (karty,
+  Kalshi,        kursy       wydarzenia po    wersja zasad)         Decimal,   deduplikacja po      ponowne
+  Odds API)      → Redis)    czasie, rynki)                         scenariusze) czacie i rewizji)  sprawdzenie)
 ```
 
-* **domain/** — чистый расчёт: сценарии (ничья, ОТ, тотал/пуш, отмена, перенос), модели комиссий
-  (Polymarket `C·p·r·(p(1-p))^e`, Kalshi `ceil(0.07·C·P·(1-P))`), проход по стакану, FX с резервом,
-  точный решатель с ограниченным перебором, вердикты «сигнал / кандидат / отказ». Только `Decimal`.
-* **matching/** — реестр команд NBA/NFL/NHL/MLB/EPL с алиасами всех площадок (включая стиль Kalshi
-  «Los Angeles L»), кластеризация событий по паре команд и времени (точное время ±3 ч, события «только
-  дата» прикрепляются к единственному матчу этого дня, даблхедеры — по номеру игры или в ручную проверку),
-  канонический ключ рынка `событие|тип|период|линия`, проверка правил, сброс одобрения при изменениях.
-* **adapters/** — по пакету на поставщика + общий HTTP-клиент (лимит параллелизма, backoff с jitter,
-  Retry-After, маскирование ключей) и состояние стакана для WebSocket.
-* **services/** — ingest, scan, recheck, replay; **storage/** — PostgreSQL (источник истины) и Redis
-  (горячие котировки с монотонной записью через Lua); **telegram/** — бот aiogram 3 и outbox-воркер.
+* **domain/** — czyste obliczenia: scenariusze (remis, dogrywka, total z pushem, odwołanie, przełożenie),
+  modele prowizji (Polymarket `C·p·r·(p(1-p))^e`, Kalshi `ceil(0.07·C·P·(1-P))`), przejście po arkuszu zleceń,
+  kurs walut z rezerwą, dokładny solver z ograniczonym przeszukiwaniem, werdykty „sygnał / kandydat / odrzucone”.
+  Wyłącznie `Decimal`.
+* **matching/** — rejestr drużyn NBA/NFL/NHL/MLB/EPL z aliasami wszystkich platform (także w stylu Kalshi
+  „Los Angeles L”), grupowanie wydarzeń po parze drużyn i czasie (dokładny czas ±3 h, wydarzenia „tylko data”
+  dołączane do jedynego meczu danego dnia, doubleheadery — po numerze gry albo do ręcznej weryfikacji),
+  kanoniczny klucz rynku `wydarzenie|typ|okres|linia`, kontrola zasad, cofnięcie akceptacji przy zmianach.
+* **adapters/** — osobny pakiet na dostawcę + wspólny klient HTTP (limit współbieżności, backoff z jitterem,
+  Retry-After, maskowanie kluczy) i stan arkusza zleceń dla WebSocketu.
+* **services/** — ingest, scan, recheck, replay; **storage/** — PostgreSQL (źródło prawdy) i Redis
+  (bieżące kursy z monotonicznym zapisem przez Lua); **telegram/** — bot aiogram 3 i worker powiadomień.
 
-Подробнее: [docs/architecture.md](docs/architecture.md), этап 0 — [docs/stage0-audit.md](docs/stage0-audit.md),
-эксплуатация — [docs/runbook.md](docs/runbook.md), статус работ — [docs/TODO.md](docs/TODO.md).
+Więcej: [docs/architecture.md](docs/architecture.md), plan sprintów i stan zadań — [docs/sprinty.md](docs/sprinty.md),
+etap 0 — [docs/stage0-audit.md](docs/stage0-audit.md), eksploatacja — [docs/runbook.md](docs/runbook.md),
+lista techniczna — [docs/TODO.md](docs/TODO.md), dostawcy danych — [docs/providers/](docs/providers/README.md).
 
-## Быстрый старт (локально, без сети и секретов)
+## Szybki start (lokalnie, bez sieci i sekretów)
 
 ```bash
 uv sync
-uv run polybot demo            # полный конвейер на TEST DATA fixtures: парсинг → сопоставление → расчёт → карточки
-uv run pytest -q               # unit-тесты (интеграционные пропускаются без БД)
+uv run polybot demo            # pełny potok na danych testowych: parsowanie → dopasowanie → obliczenia → karty
+uv run pytest -q               # testy jednostkowe (integracyjne są pomijane bez bazy)
 uv run ruff check src tests && uv run mypy
 ```
 
-Интеграционные тесты (PostgreSQL + Redis, без секретов):
+Testy integracyjne (PostgreSQL + Redis, bez sekretów):
 
 ```bash
 export POLYBOT_TEST_DATABASE_URL=postgresql+asyncpg://polybot:polybot@localhost:5432/polybot_test
@@ -48,45 +53,63 @@ export POLYBOT_TEST_REDIS_URL=redis://localhost:6379/1
 uv run pytest -q
 ```
 
-## Команды
+## Polecenia CLI
 
-| Команда | Назначение |
+| Polecenie | Przeznaczenie |
 |---|---|
-| `polybot migrate` | применить миграции Alembic |
-| `polybot run-ingest` | discovery каталога, сопоставление, опрос котировок |
-| `polybot run-scan` | пересчёт по изменениям котировок/правил и по TTL |
-| `polybot run-bot` | Telegram-бот (long polling) + воркер уведомлений |
-| `polybot probe [--samples N --interval S --out f.json]` | этап 0: доступ, объёмы, глубина/лимиты, пересечение событий |
-| `polybot replay --at 2026-01-15T23:00:00+00:00` | пересчёт по историческому снимку из БД без будущих котировок |
-| `polybot demo` / `polybot replay --fixtures tests/fixtures` | офлайн-прогон на fixtures |
-| `polybot mappings list|approve ID|reject ID` | админ-очередь связок из консоли |
-| `polybot healthcheck` | проверка БД и Redis (используется Docker) |
+| `polybot migrate` | zastosowanie migracji Alembic |
+| `polybot run-ingest` | pobieranie katalogu, dopasowanie, odpytywanie kursów |
+| `polybot run-scan` | przeliczanie po zmianach kursów/zasad i po wygaśnięciu TTL |
+| `polybot run-bot` | bot Telegram (long polling) + worker powiadomień |
+| `polybot probe [--samples N --interval S --out f.json]` | etap 0: dostęp, wolumen, głębokość/limity, część wspólna wydarzeń |
+| `polybot replay --at 2026-01-15T23:00:00+00:00` | przeliczenie z historycznego zrzutu z bazy, bez przyszłych kursów |
+| `polybot demo` / `polybot replay --fixtures tests/fixtures` | przebieg offline na danych testowych |
+| `polybot mappings list\|approve ID\|reject ID` | kolejka powiązań rynków z konsoli (admin) |
+| `polybot healthcheck` | kontrola bazy i Redisa (używane przez Dockera) |
 
-## Развёртывание на VPS
+## Polecenia bota
 
-1. Установить Docker + Compose, склонировать репозиторий, `cp .env.example .env` и заполнить
+| Polecenie | Dla kogo | Opis |
+|---|---|---|
+| `/start`, `/menu` | użytkownik | subskrypcja i menu z przyciskami (Sygnały, Budżet, Filtry, Pomoc) |
+| `/signals` | użytkownik | aktywne sygnały dla ustawionego budżetu |
+| `/budget 250` | użytkownik | budżet na jedną kombinację |
+| `/filters` | użytkownik | typy alertów (sygnały/kandydaci), trasy, minimalne ROI |
+| `/minprofit 2.5` | użytkownik | minimalny zysk alertu w walucie budżetu (`0` wyłącza próg) |
+| `/stop`, `/help` | użytkownik | wstrzymanie wysyłki, pomoc |
+| `/pending` | admin | kolejka powiązań rynków do zatwierdzenia/odrzucenia |
+| `/pause`, `/resume` | admin | zatrzymanie i wznowienie publikacji sygnałów |
+| `/stats` | admin | liczba użytkowników, wysłane alerty, powiązania, odrzucenia |
+| `/alias nba "LA Lakers" nba:lal` | admin | nowy alias drużyny |
+
+## Wdrożenie na VPS
+
+1. Zainstalować Docker + Compose, sklonować repozytorium, `cp .env.example .env` i uzupełnić
    (`POSTGRES_PASSWORD`, `POLYBOT_TELEGRAM_BOT_TOKEN`, `POLYBOT_ADMIN_IDS`, `POLYBOT_ODDS_API_KEY`).
-2. Первый прогон этапа 0 на живых данных: `docker compose run --rm ingest probe --samples 6 --interval 600 --out /tmp/probe.json`.
-3. `ops/deploy.sh <sha>` — pull образа `ghcr.io/exemoysei/polygumblescan:<sha>`, миграции (лог в `var/log/`),
-   запуск `ingest`, `scan`, `bot`, `backup`, проверка health. Наружу ничего не публикуется: метрики только на
-   `127.0.0.1:9101-9103`, PostgreSQL и Redis — в приватной сети Compose.
-4. В Telegram админ открывает `/pending` и подтверждает связки. Сигналы появляются только по подтверждённым.
+2. Pierwszy pomiar etapu 0 na żywych danych:
+   `docker compose run --rm ingest probe --samples 6 --interval 600 --out /tmp/probe.json`.
+3. `ops/deploy.sh <sha>` — pobranie obrazu `ghcr.io/exemoysei/polygumblescan:<sha>`, migracje (log w `var/log/`),
+   uruchomienie `ingest`, `scan`, `bot`, `backup`, kontrola stanu. Na zewnątrz nic nie jest wystawione: metryki
+   tylko na `127.0.0.1:9101-9103`, PostgreSQL i Redis w prywatnej sieci Compose.
+4. W Telegramie admin otwiera `/pending` i zatwierdza powiązania. Sygnały pojawiają się tylko dla zatwierdzonych.
 
-Staging-проверка без живых API: `POLYBOT_FIXTURES_DIR=/app/tests/fixtures` — бот прогоняет тестовые
-события с живыми часами, так можно проверить весь путь до сообщения в Telegram.
+Test na środowisku staging bez żywych API: `POLYBOT_FIXTURES_DIR=/app/tests/fixtures` — bot przetwarza
+wydarzenia testowe z bieżącym zegarem, co pozwala sprawdzić całą ścieżkę aż do wiadomości w Telegramie.
 
-## Основные настройки (`POLYBOT_*`)
+## Najważniejsze ustawienia (`POLYBOT_*`)
 
-`LEAGUES` (по умолчанию `["nba"]`), `DEFAULT_BUDGET`, `MIN_PROFIT`, `MIN_ROI`, `ROUTES`
-(`prediction_prediction`, `prediction_sportsbook`; `sportsbook_sportsbook` выключен), `QUOTE_TTL_S`,
-`MAX_QUOTE_SKEW_S`, `FX_STATIC` + `FX_RESERVE_BPS` (USDC не приравнивается к USD без резерва),
-`SPORTSBOOK_MAX_STAKE` (известные лимиты по букмекерам), `AUTO_APPROVE_STRONG_MATCHES` (выключено: в MVP
-все связки подтверждает админ). Полный список — `src/polybot/settings.py`.
+`LEAGUES` (domyślnie `["nba"]`), `DEFAULT_BUDGET`, `MIN_PROFIT`, `MIN_ROI`, `ROUTES`
+(`prediction_prediction`, `prediction_sportsbook`; `sportsbook_sportsbook` wyłączone), `QUOTE_TTL_S`,
+`MAX_QUOTE_SKEW_S`, `FX_STATIC` + `FX_RESERVE_BPS` (USDC nie jest traktowany jak USD bez rezerwy),
+`SPORTSBOOK_MAX_STAKE` (znane limity u bukmacherów), `AUTO_APPROVE_STRONG_MATCHES` (wyłączone: w MVP wszystkie
+powiązania zatwierdza admin). Pełna lista — `src/polybot/settings.py`.
 
-## Ограничения MVP
+## Ograniczenia MVP
 
-* Только прематч, 2–3 ноги, рынки «победитель», 1X2 и тотал с половинной/целой линией.
-* Котировки Odds API всегда дают **кандидатов**: лимит неизвестен, свежесть подтверждает агрегатор,
-  правила букмекера по умолчанию.
-* Правила площадок разбираются по ключевым словам; всё нераспознанное — `unknown` и в ручную проверку.
-* Наблюдение без сделок проверяет сканер, но не подтверждает реальную доходность.
+* Tylko prematch, 2–3 nogi, rynki „zwycięzca”, 1X2 oraz total z linią połówkową/całkowitą.
+* Kursy z The Odds API zawsze dają **kandydatów**: limit jest nieznany, świeżość potwierdza tylko agregator,
+  zasady bukmachera są przyjęte domyślnie.
+* Zasady platform są rozpoznawane po słowach kluczowych; wszystko, czego nie rozpoznano, zostaje `unknown`
+  i trafia do ręcznej weryfikacji.
+* Arbitraż wewnątrz jednej platformy (suma cen YES < 1 na Polymarket) nie jest jeszcze zaimplementowany.
+* Obserwacja bez realnych transakcji sprawdza skaner, ale nie potwierdza rzeczywistej rentowności.

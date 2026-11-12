@@ -1,60 +1,61 @@
-# Этап 0 — аудит, доступы, probe источников, выбор рынка
+# Etap 0 — audyt, dostępy, probe źródeł, wybór rynku
 
-Дата: 2026-11-04. Выполнено в среде разработки (облачный контейнер).
+Data: 04.11.2026. Wykonano w środowisku deweloperskim (kontener w chmurze).
 
-## Инвентаризация репозитория
+## Inwentaryzacja repozytorium
 
-На старте в `exeMoysei/PolyGumbleScan` был только `README.md` («Rachunki — Arbitrage tracker»), без кода,
-`AGENTS.md`, CI и истории изменений. Чужих изменений для сохранения не было.
+Na starcie gałąź `main` w `exeMoysei/PolyGumbleScan` zawierała tylko `README.md` („Rachunki — Arbitrage tracker”),
+bez kodu, `AGENTS.md`, CI i historii zmian. Później (10.11.2026) pojawiły się PR #19 i #20 z własną strukturą
+pakietu `polygumblescan` — nie są scalone z `main`; patrz [sprinty.md](sprinty.md).
 
-## Проверка доступов из среды разработки
+## Kontrola dostępów ze środowiska deweloperskiego
 
-| Хост | Результат |
+| Host | Wynik |
 |---|---|
-| gamma-api.polymarket.com, clob.polymarket.com | ❌ 403 от прокси среды (сетевой политикой запрещено) |
-| api.elections.kalshi.com | ❌ 403 от прокси среды |
-| api.the-odds-api.com | ❌ 403 от прокси среды |
+| gamma-api.polymarket.com, clob.polymarket.com | ❌ 403 z proxy środowiska (zablokowane polityką sieciową) |
+| api.elections.kalshi.com | ❌ 403 z proxy środowiska |
+| api.the-odds-api.com | ❌ 403 z proxy środowiska |
 | pypi.org | ✅ |
 
-Живой probe из этой среды невозможен. Поэтому:
+Pomiar na żywych danych z tego środowiska nie jest możliwy. Dlatego:
 
-* контракты адаптеров сверены с официальной документацией (см. `docs/providers/*.md`), включая
-  текущий формат Kalshi `orderbook_fp` (только bids, строки в долларах) и модель комиссий Polymarket
+* kontrakty adapterów zostały porównane z oficjalną dokumentacją (zob. `docs/providers/*.md`), w tym aktualny
+  format Kalshi `orderbook_fp` (same bidy, ceny jako napisy w dolarach) oraz model prowizji Polymarket
   `fd = {r, e, to}`;
-* добавлена команда `polybot probe`, которая на VPS измеряет доступ, задержку, число событий/рынков/котировок,
-  долю котировок с глубиной и с подтверждёнными лимитами, квоты API и **число общих событий** по наборам
-  площадок за период наблюдения (`--samples N --interval S`), и сохраняет JSON для этого отчёта;
-* весь конвейер проверен на fixtures, повторяющих формат ответов площадок (помечены `TEST DATA`).
+* dodano polecenie `polybot probe`, które na VPS mierzy dostęp, opóźnienie, liczbę wydarzeń/rynków/kursów,
+  odsetek kursów z głębokością i z potwierdzonymi limitami, limity API oraz **liczbę wspólnych wydarzeń**
+  dla zestawów platform w okresie obserwacji (`--samples N --interval S`) i zapisuje JSON do tego raportu;
+* cały potok sprawdzono na danych testowych w formacie odpowiedzi platform (oznaczone `TEST DATA`).
 
-## Таблица источников
+## Tabela źródeł
 
-| Источник | Тип | Цена для расчёта | Глубина | Лимиты | Свежесть | Ссылки | Статус |
+| Źródło | Typ | Cena do obliczeń | Głębokość | Limity | Świeżość | Linki | Status |
 |---|---|---|---|---|---|---|---|
-| Polymarket | prediction | ask-лестница CLOB | да | да (объём уровней) | от площадки | да | адаптер готов, probe на VPS |
-| Kalshi | prediction | ask = 1 − bid противоположной стороны | да | да | от площадки (время получения) | да | адаптер готов, probe на VPS |
-| The Odds API | агрегатор sportsbook | десятичный коэффициент | нет | unknown | только агрегатор | частично (`includeLinks`) | адаптер готов, нужен ключ |
+| Polymarket | prediction | drabinka ask z CLOB | tak | tak (wolumen poziomów) | z platformy | tak | adapter gotowy, probe na VPS |
+| Kalshi | prediction | ask = 1 − bid strony przeciwnej | tak | tak | z platformy (czas odbioru) | tak | adapter gotowy, probe na VPS |
+| The Odds API | agregator bukmacherów | kurs dziesiętny | nie | unknown | tylko agregator | częściowo (`includeLinks`) | adapter gotowy, potrzebny klucz |
 
-## Выбор первого рынка
+## Wybór pierwszego rynku
 
-**NBA, «победитель матча» с учётом овертайма (moneyline), прематч.**
+**NBA, „zwycięzca meczu” z dogrywką (moneyline), prematch.**
 
-* Два обычных исхода без ничьей → чистая двухисходная модель MVP.
-* Рынок есть у всех трёх источников: Polymarket (`nba-<away>-<home>-<date>`), Kalshi (`KXNBAGAME`),
-  букмекеры через The Odds API (`basketball_nba`, `h2h`) → оба маршрута (prediction↔prediction и
-  prediction↔sportsbook) на одном событии.
-* Высокая частота игр (≈7–15 матчей в день в сезоне) даёт статистику пилота за дни, а не месяцы.
-* Резерв: EPL 1X2 (90 минут) — проверка ничьей и пары «A / не A» (`epl` уже поддержан).
+* Dwa zwykłe wyniki bez remisu → czysty model dwuwynikowy MVP.
+* Rynek jest we wszystkich trzech źródłach: Polymarket (`nba-<gość>-<gospodarz>-<data>`), Kalshi (`KXNBAGAME`),
+  bukmacherzy przez The Odds API (`basketball_nba`, `h2h`) → obie trasy (prediction ↔ prediction oraz
+  prediction ↔ bukmacher) na jednym wydarzeniu.
+* Duża częstotliwość meczów (ok. 7–15 dziennie w sezonie) daje statystykę pilotażu w dni, nie miesiące.
+* Rezerwa: EPL 1X2 (90 minut) — sprawdzenie remisu i pary „A / nie A” (liga `epl` jest już obsługiwana).
 
-Окончательное решение подтверждается цифрами `polybot probe` на VPS: если пересечение NBA между
-Polymarket и Kalshi окажется пустым, пилот идёт по маршруту prediction↔sportsbook, а второй маршрут
-показывается тестовым примером (`polybot demo`, карточка «СИГНАЛ · prediction ↔ prediction»).
+Ostateczną decyzję potwierdzą liczby z `polybot probe` na VPS: jeśli część wspólna NBA między Polymarket
+a Kalshi okaże się pusta, pilotaż idzie trasą prediction ↔ bukmacher, a druga trasa jest pokazywana na
+przykładzie testowym (`polybot demo`, karta „СИГНАЛ · prediction ↔ prediction”).
 
-## Как получить цифры
+## Jak uzyskać liczby
 
 ```bash
 docker compose run --rm ingest probe --samples 12 --interval 900 --out /app/var/probe-nba.json
 ```
 
-В выводе: `sources.<provider>.{events,markets,quotes,with_depth,with_limits,max_age_s}`,
-`overlap["kalshi+oddsapi+polymarket"]` — число общих событий, `unresolved` — названия, которые не удалось
-привязать (кандидаты в алиасы: `/alias nba "<name>" nba:<code>`), `quota` — остаток квоты Odds API.
+W wyniku: `sources.<dostawca>.{events,markets,quotes,with_depth,with_limits,max_age_s}`,
+`overlap["kalshi+oddsapi+polymarket"]` — liczba wspólnych wydarzeń, `unresolved` — nazwy, których nie udało się
+przypisać (kandydaci na aliasy: `/alias nba "<nazwa>" nba:<kod>`), `quota` — pozostały limit The Odds API.
