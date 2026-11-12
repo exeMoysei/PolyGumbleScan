@@ -138,6 +138,11 @@ async def test_notifier_lease_retry_and_expiry(sessions, redis) -> None:  # type
     assert await n2.process_once(NOW + timedelta(seconds=5)) == 1
     texts = [t for _, t in sender.sent]
     assert sum("СИГНАЛ" in t or "КАНДИДАТ" in t for t in texts) >= 1
+    async with sessions() as s:
+        st_ = await repo.stats(s, NOW - timedelta(days=1))
+    assert st_["users_total"] == 1 and st_["users_active"] == 1
+    cards = sum("СИГНАЛ" in t or "КАНДИДАТ" in t for _, t in sender.sent)  # admin notices are not alerts
+    assert cards >= 1 and st_["alerts_sent_total"] == cards and st_["alerts_sent_recent"] == cards
     # forbidden -> subscription deactivated
     async with sessions() as s, s.begin():
         await repo.enqueue_text(s, [1001], "hello", "x", NOW)

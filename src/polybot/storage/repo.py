@@ -764,4 +764,23 @@ async def stats(s: AsyncSession, since: datetime) -> dict[str, Any]:
             )
         ).all()
     )
-    return {"mappings": by_status, "opportunities": opp, "rejections": rej, "shared_events": shared, "outbox": outbox}
+    users_total = (await s.execute(select(func.count()).select_from(Subscription))).scalar() or 0
+    users_active = (
+        await s.execute(select(func.count()).select_from(Subscription).where(Subscription.active.is_(True)))
+    ).scalar() or 0
+    alerts = (
+        select(func.count()).select_from(Outbox).where(Outbox.status == "sent", Outbox.kind.in_(["signal", "update"]))
+    )
+    alerts_sent_total = (await s.execute(alerts)).scalar() or 0
+    alerts_sent_recent = (await s.execute(alerts.where(Outbox.sent_at >= since))).scalar() or 0
+    return {
+        "mappings": by_status,
+        "opportunities": opp,
+        "rejections": rej,
+        "shared_events": shared,
+        "outbox": outbox,
+        "users_total": users_total,
+        "users_active": users_active,
+        "alerts_sent_total": alerts_sent_total,
+        "alerts_sent_recent": alerts_sent_recent,
+    }

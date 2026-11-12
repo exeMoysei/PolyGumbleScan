@@ -23,6 +23,25 @@ class FltCb(CallbackData, prefix="f"):
     value: str
 
 
+class MenuCb(CallbackData, prefix="n"):
+    action: str  # signals | budget | filters | help
+
+
+def main_menu_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="📈 Сигналы", callback_data=MenuCb(action="signals").pack()),
+                InlineKeyboardButton(text="💰 Бюджет", callback_data=MenuCb(action="budget").pack()),
+            ],
+            [
+                InlineKeyboardButton(text="⚙️ Фильтры", callback_data=MenuCb(action="filters").pack()),
+                InlineKeyboardButton(text="ℹ️ Справка", callback_data=MenuCb(action="help").pack()),
+            ],
+        ]
+    )
+
+
 def card_keyboard(opp_id: int, rev: int, payload: dict[str, Any]) -> InlineKeyboardMarkup:
     rows = [
         [

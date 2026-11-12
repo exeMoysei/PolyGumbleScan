@@ -27,3 +27,39 @@ def test_callback_data_fits_telegram_limit() -> None:
         },
     )
     assert len(kb.inline_keyboard) == 2
+
+
+def test_main_menu_and_min_profit_parsing() -> None:
+    from decimal import Decimal
+
+    from polybot.telegram.bot import parse_min_profit
+    from polybot.telegram.keyboards import MenuCb, main_menu_keyboard
+
+    kb = main_menu_keyboard()
+    actions = [MenuCb.unpack(b.callback_data).action for row in kb.inline_keyboard for b in row if b.callback_data]
+    assert actions == ["signals", "budget", "filters", "help"]
+    assert parse_min_profit("2,5", Decimal(5000)) == Decimal("2.50")
+    assert parse_min_profit("0", Decimal(5000)) == Decimal("0.00")
+    for bad in (None, "", "abc", "-1", "NaN", "999999"):
+        assert parse_min_profit(bad, Decimal(5000)) is None
+
+
+def test_subscription_min_profit_filter() -> None:
+    from decimal import Decimal
+
+    from polybot.storage.models import Subscription
+    from polybot.storage.repo import subscription_accepts
+
+    payload = {
+        "verdict": "signal",
+        "route": "prediction_prediction",
+        "event": {"league": "nba"},
+        "roi": "0.01",
+        "min_profit": "2.84",
+    }
+    sub = Subscription(chat_id=1, user_id=1, budget=Decimal(200), filters={"verdicts": ["signal"], "min_profit": "2.5"})
+    assert subscription_accepts(sub, payload)
+    sub.filters = {"verdicts": ["signal"], "min_profit": "3"}
+    assert not subscription_accepts(sub, payload)
+    sub.filters = {"verdicts": ["signal"], "min_profit": None}
+    assert subscription_accepts(sub, payload)

@@ -28,9 +28,11 @@ from polybot.telegram.cards import reason_ru, render_card, render_closed, render
 from polybot.telegram.keyboards import (
     FltCb,
     MapCb,
+    MenuCb,
     OppCb,
     card_keyboard,
     filters_keyboard,
+    main_menu_keyboard,
     mapping_keyboard,
     toggle_filter,
 )
@@ -44,6 +46,7 @@ HELP = (
     "/signals — активные сигналы под ваш бюджет\n"
     "/budget 250 — установить бюджет на одну комбинацию\n"
     "/filters — что присылать (сигналы/кандидаты, маршруты, ROI)\n"
+    "/minprofit 2.5 — минимальная прибыль для уведомлений (0 — сбросить)\n"
     "/stop — приостановить рассылку\n"
     "/help — справка\n\n"
     "✅ <b>Сигнал</b> — проверенные правила, известные лимиты, без убытка в описанных исключениях.\n"
@@ -78,7 +81,34 @@ async def cmd_start(message: Message, ctx: BotContext) -> None:
         sub = await repo.ensure_subscription(s, message.chat.id, message.from_user.id, ctx.settings.default_budget)
         budget = sub.budget
     text = HELP + (ADMIN_HELP if ctx.is_admin(message.from_user.id) else "")
-    await message.answer(f"Подписка активна. Бюджет: {Decimal(budget):.2f} {ctx.settings.budget_currency}.\n\n{text}")
+    await message.answer(
+        f"Подписка активна. Бюджет: {Decimal(budget):.2f} {ctx.settings.budget_currency}.\n\n{text}",
+        reply_markup=main_menu_keyboard(),
+    )
+
+
+@router.message(Command("menu"))
+async def cmd_menu(message: Message) -> None:
+    await message.answer("Меню:", reply_markup=main_menu_keyboard())
+
+
+@router.callback_query(MenuCb.filter())
+async def cb_menu(query: CallbackQuery, callback_data: MenuCb, ctx: BotContext) -> None:
+    msg = query.message
+    if not isinstance(msg, Message):
+        return
+    await query.answer()
+    if callback_data.action == "signals":
+        await _send_signals(msg, ctx)
+    elif callback_data.action == "filters":
+        await _send_filters(msg, query.from_user.id, ctx)
+    elif callback_data.action == "budget":
+        async with ctx.sessions() as s:
+            sub = await s.get(Subscription, msg.chat.id)
+        budget = Decimal(sub.budget) if sub else ctx.settings.default_budget
+        await msg.answer(f"Текущий бюджет: {budget:.2f} {ctx.settings.budget_currency}. Изменить: /budget 250")
+    else:
+        await msg.answer(HELP + (ADMIN_HELP if ctx.is_admin(query.from_user.id) else ""))
 
 
 @router.message(Command("help"))
@@ -121,13 +151,54 @@ async def cmd_budget(message: Message, command: CommandObject, ctx: BotContext) 
     )
 
 
+def _filters_text(filters: dict[str, Any], currency: str) -> str:
+    mp = filters.get("min_profit")
+    line = f"мин. прибыль {mp} {currency}" if mp else "мин. прибыль не задана (/minprofit 2.5)"
+    return f"Что присылать ({line}):"
+
+
+async def _send_filters(message: Message, user_id: int, ctx: BotContext) -> None:
+    async with ctx.sessions() as s, s.begin():
+        sub = await repo.ensure_subscription(s, message.chat.id, user_id, ctx.settings.default_budget)
+        filters = dict(sub.filters or {})
+    await message.answer(_filters_text(filters, ctx.settings.budget_currency), reply_markup=filters_keyboard(filters))
+
+
 @router.message(Command("filters"))
 async def cmd_filters(message: Message, ctx: BotContext) -> None:
     assert message.from_user is not None
+    await _send_filters(message, message.from_user.id, ctx)
+
+
+def parse_min_profit(raw: str | None, maximum: Decimal) -> Decimal | None:
+    """Parse the /minprofit argument; ``None`` means the value is not acceptable."""
+    try:
+        value = Decimal((raw or "").strip().replace(",", "."))
+    except InvalidOperation:
+        return None
+    if not value.is_finite() or value < 0 or value > maximum:
+        return None
+    return value.quantize(Decimal("0.01"))
+
+
+@router.message(Command("minprofit"))
+async def cmd_minprofit(message: Message, command: CommandObject, ctx: BotContext) -> None:
+    assert message.from_user is not None
+    value = parse_min_profit(command.args, ctx.settings.max_budget)
+    if value is None:
+        await message.answer("Формат: /minprofit 2.5 (в валюте бюджета). /minprofit 0 — убрать порог.")
+        return
     async with ctx.sessions() as s, s.begin():
         sub = await repo.ensure_subscription(s, message.chat.id, message.from_user.id, ctx.settings.default_budget)
         filters = dict(sub.filters or {})
-    await message.answer("Что присылать:", reply_markup=filters_keyboard(filters))
+        filters["min_profit"] = str(value) if value > 0 else None
+        sub.filters = filters
+    if value > 0:
+        await message.answer(
+            f"Буду присылать только сигналы с мин. прибылью от {value} {ctx.settings.budget_currency}."
+        )
+    else:
+        await message.answer("Порог прибыли убран.")
 
 
 @router.callback_query(FltCb.filter())
@@ -147,8 +218,7 @@ async def cb_filter(query: CallbackQuery, callback_data: FltCb, ctx: BotContext)
     await query.answer("Сохранено")
 
 
-@router.message(Command("signals"))
-async def cmd_signals(message: Message, ctx: BotContext) -> None:
+async def _send_signals(message: Message, ctx: BotContext) -> None:
     async with ctx.sessions() as s:
         sub = await s.get(Subscription, message.chat.id)
         budget = Decimal(sub.budget) if sub else ctx.settings.default_budget
@@ -166,6 +236,11 @@ async def cmd_signals(message: Message, ctx: BotContext) -> None:
             reply_markup=card_keyboard(o.id, o.revision, o.payload),
             disable_web_page_preview=True,
         )
+
+
+@router.message(Command("signals"))
+async def cmd_signals(message: Message, ctx: BotContext) -> None:
+    await _send_signals(message, ctx)
 
 
 # ---------------------------------------------------------------------------- card actions
@@ -349,7 +424,10 @@ async def cmd_stats(message: Message, ctx: BotContext) -> None:
     async with ctx.sessions() as s:
         st = await repo.stats(s, datetime.now(UTC) - timedelta(hours=24))
     lines = [
-        "📊 <b>За 24 часа</b>",
+        "📊 <b>Статистика</b>",
+        f"Пользователей: {st['users_total']} (активных подписок: {st['users_active']})",
+        f"Отправлено уведомлений: {st['alerts_sent_total']} всего, {st['alerts_sent_recent']} за 24 часа",
+        "<b>За 24 часа</b>",
         f"Общих событий (2+ площадки): {st['shared_events']}",
         f"Связки: {st['mappings']}",
         f"Сигналы/кандидаты: {st['opportunities']}",
@@ -379,6 +457,8 @@ COMMANDS = [
     BotCommand(command="signals", description="Активные сигналы"),
     BotCommand(command="budget", description="Бюджет на комбинацию"),
     BotCommand(command="filters", description="Фильтры"),
+    BotCommand(command="minprofit", description="Минимальная прибыль"),
+    BotCommand(command="menu", description="Меню"),
     BotCommand(command="help", description="Справка"),
 ]
 
