@@ -1,10 +1,11 @@
 # Plan sprintów i stan zadań
 
-Sprinty trwają 2 tygodnie (czwartek–czwartek). Sprinty 1–4 pochodzą z istniejących issues na GitHubie;
-sprinty 5–8 to **propozycja** rozszerzenia planu do 8 sprintów, oparta na specyfikacji technicznej projektu.
+Sprinty trwają 2 tygodnie (czwartek–czwartek). Sprinty 1–4 pochodzą z pierwotnych issues #1–#18;
+sprinty 5–8 (issues #22–#34) rozszerzają plan do 8 sprintów na podstawie specyfikacji technicznej projektu.
 
-Stan na 12.11.2026 (koniec Sprintu 1). Kolumna „Stan” opisuje kod w gałęzi `claude/lucid-wright-faibu5`.
-**Ta gałąź nie jest jeszcze scalona z `main`** — zadanie można uznać za zamknięte dopiero po merge.
+Stan na 12.11.2026 (koniec Sprintu 1). Kolumna „Stan” opisuje kod w gałęzi `claude/lucid-wright-faibu5`,
+czyli w PR #21. **PR #21 nie jest jeszcze scalony z `main`** — po merge automatycznie zamkną się issues
+#1, #2, #4, #5, #11, #13–#18.
 
 Legenda: ✅ zrobione i pokryte testami · 🟡 częściowo · ⬜ niezrobione.
 
@@ -49,47 +50,48 @@ Do zrobienia w sprincie: US3 dla rynków wielowynikowych Polymarket (pobieranie 
 | #11 | US11: Panel admina: statystyki | ✅ | `/stats`: liczba użytkowników, aktywne subskrypcje, wysłane alerty (łącznie i 24 h), powiązania, odrzucenia |
 | #12 | US12: Subskrypcja premium | ⬜ | |
 
-## Sprint 5 (24.12–07.01) — arbitraż między platformami *(propozycja)*
+## Sprint 5 (24.12–07.01) — arbitraż między platformami
 
-| Historia | Stan | Uwagi |
+| Issue i historia | Stan | Uwagi |
 |---|---|---|
-| US13: Jako klient chcę alert, gdy to samo wydarzenie ma różne ceny na Polymarket i Kalshi | ✅ | adapter Kalshi, dopasowanie wydarzeń, trasa prediction ↔ prediction |
-| US14: Jako klient chcę alert dla pary prediction market ↔ bukmacher | ✅ | The Odds API; zawsze jako „kandydat” (nieznany limit, świeżość tylko z agregatora) |
-| US15: Jako admin chcę zatwierdzać powiązania rynków między platformami | ✅ | `/pending`, akceptacja związana z wersją zasad, automatyczne cofnięcie przy zmianie |
+| #22 US13: Jako klient chcę alert, gdy to samo wydarzenie ma różne ceny na Polymarket i Kalshi | ✅ | adapter Kalshi, dopasowanie wydarzeń, trasa prediction ↔ prediction |
+| #23 US14: Jako klient chcę alert dla pary prediction market ↔ bukmacher | ✅ | The Odds API; zawsze jako „kandydat” (nieznany limit, świeżość tylko z agregatora) |
+| #24 US15: Jako admin chcę zatwierdzać powiązania rynków między platformami | ✅ | `/pending`, akceptacja związana z wersją zasad, automatyczne cofnięcie przy zmianie |
 | Zadanie: pomiar części wspólnej wydarzeń na żywych danych (`polybot probe`) | ⬜ | wymaga VPS i klucza The Odds API |
 
-## Sprint 6 (07.01–21.01) — jakość sygnału *(propozycja)*
+## Sprint 6 (07.01–21.01) — jakość sygnału
 
-| Historia | Stan | Uwagi |
+| Issue i historia | Stan | Uwagi |
 |---|---|---|
-| US16: Jako klient chcę ponownie sprawdzić alert przed postawieniem zakładu | ✅ | przycisk „Sprawdź ponownie”: nowa rewizja albo zamknięcie karty |
-| US17: Jako klient chcę ustawić budżet i dostać stawki dopasowane do budżetu | ✅ | `/budget`, kroki i minimalne rozmiary platform |
-| US18: Jako klient chcę widzieć wynik przy odwołaniu/przełożeniu meczu i zasady rozliczenia | ✅ | scenariusze wyjątkowe na karcie, przycisk „Zasady” |
+| #25 US16: Jako klient chcę ponownie sprawdzić alert przed postawieniem zakładu | ✅ | przycisk „Sprawdź ponownie”: nowa rewizja albo zamknięcie karty |
+| #26 US17: Jako klient chcę ustawić budżet i dostać stawki dopasowane do budżetu | ✅ | `/budget`, kroki i minimalne rozmiary platform |
+| #27 US18: Jako klient chcę widzieć wynik przy odwołaniu/przełożeniu meczu i zasady rozliczenia | ✅ | scenariusze wyjątkowe na karcie, przycisk „Zasady” |
 | Zadanie: wersja językowa bota (PL) | ⬜ | komunikaty są dziś po rosyjsku |
 
-## Sprint 7 (21.01–04.02) — wdrożenie i niezawodność *(propozycja)*
+## Sprint 7 (21.01–04.02) — wdrożenie i niezawodność
 
-| Historia | Stan | Uwagi |
+| Issue i historia | Stan | Uwagi |
 |---|---|---|
-| US19: Jako admin chcę wdrożyć system na VPS jednym poleceniem | 🟡 | Dockerfile, Compose, `ops/deploy.sh` gotowe i sprawdzone lokalnie; brak wdrożenia na prawdziwym VPS |
-| US20: Jako admin chcę kopie zapasowe bazy i test odtworzenia | ✅ | `ops/backup.sh`, `ops/restore_test.sh` — wykonane lokalnie w Compose |
-| US21: Jako admin chcę monitoring i powiadomienia techniczne | ✅ | metryki Prometheus, przykładowe alerty, kanał techniczny |
-| US22: Jako admin chcę odtworzyć obliczenie z historii (replay) | ✅ | `polybot replay` bez użycia przyszłych kursów |
+| #28 US19: Jako admin chcę wdrożyć system na VPS jednym poleceniem | 🟡 | Dockerfile, Compose, `ops/deploy.sh` gotowe i sprawdzone lokalnie; brak wdrożenia na prawdziwym VPS |
+| #29 US20: Jako admin chcę kopie zapasowe bazy i test odtworzenia | ✅ | `ops/backup.sh`, `ops/restore_test.sh` — wykonane lokalnie w Compose |
+| #30 US21: Jako admin chcę monitoring i powiadomienia techniczne | ✅ | metryki Prometheus, przykładowe alerty, kanał techniczny |
+| #31 US22: Jako admin chcę odtworzyć obliczenie z historii (replay) | ✅ | `polybot replay` bez użycia przyszłych kursów |
 
-## Sprint 8 (04.02–18.02) — pilotaż i zamknięcie *(propozycja)*
+## Sprint 8 (04.02–18.02) — pilotaż i zamknięcie
 
-| Historia | Stan | Uwagi |
+| Issue i historia | Stan | Uwagi |
 |---|---|---|
-| US23: Pilotaż na żywych danych i raport z metryk (opóźnienie, duplikaty, odsetek odrzuconych) | ⬜ | wymaga działającego wdrożenia |
-| US24: Nowe ligi/źródła i kombinacje 3+ zakładów | 🟡 | 3 nogi i 5 lig działają; LP/MILP i bezpośrednie feedy bukmacherów — nie |
-| US25: Dokumentacja końcowa i prezentacja projektu | 🟡 | dokumentacja techniczna jest; brak raportu z pilotażu i prezentacji |
+| #32 US23: Pilotaż na żywych danych i raport z metryk (opóźnienie, duplikaty, odsetek odrzuconych) | ⬜ | wymaga działającego wdrożenia |
+| #33 US24: Nowe ligi/źródła i kombinacje 3+ zakładów | 🟡 | 3 nogi i 5 lig działają; LP/MILP i bezpośrednie feedy bukmacherów — nie |
+| #34 US25: Dokumentacja końcowa i prezentacja projektu | 🟡 | dokumentacja techniczna jest; brak raportu z pilotażu i prezentacji |
 
-## Sprawy do rozstrzygnięcia przez zespół
+## Decyzje i sprawy otwarte
 
-1. **Dwie struktury projektu.** PR #19 i #20 (autor: temqau) tworzą pakiet `polygumblescan` z konfiguracją
-   i CI. Gałąź `claude/lucid-wright-faibu5` zawiera pełną implementację w pakiecie `polybot` (inny
-   `pyproject.toml`, inny `ci.yml`). Obu wersji nie da się scalić bez konfliktów — trzeba wybrać jedną
-   jako bazę i przenieść do niej brakujące elementy drugiej.
-2. **Merge do `main`.** Dopóki gałąź nie jest scalona, zadania oznaczone ✅ istnieją tylko w niej.
-3. **Zakres US3.** Czy alert ma obejmować wszystkie rynki Polymarket (polityka, krypto itd.), czy tylko sport.
-4. **Sprinty 5–8.** Propozycję trzeba zatwierdzić i założyć dla niej issues na tablicy projektu.
+1. **Baza kodu.** Właściciel repozytorium zdecydował (12.11.2026), że bazą jest gałąź z PR #21 (pakiet
+   `polybot`). PR #19 i #20 (pakiet `polygumblescan`) po scaleniu PR #21 będą miały konflikty — trzeba je
+   zamknąć albo przenieść ich brakujące elementy do nowej bazy.
+2. **Merge PR #21 do `main`.** Dopóki PR nie jest scalony, zadania oznaczone ✅ istnieją tylko w gałęzi.
+3. **Zakres US3 (#3).** Do ustalenia: czy alert „suma YES < 1” ma obejmować wszystkie rynki Polymarket
+   (polityka, krypto itd.), czy tylko sport.
+4. **Tablica projektu.** Issues #22–#34 trzeba dodać do tablicy „Polymarket arbitrage bot”, jeśli nie dodały
+   się automatycznie.
