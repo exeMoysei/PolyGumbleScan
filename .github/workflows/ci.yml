@@ -46,7 +46,7 @@ jobs:
       - name: migrations are in sync with models
         run: POLYBOT_DATABASE_URL=$POLYBOT_TEST_DATABASE_URL uv run alembic upgrade head && POLYBOT_DATABASE_URL=$POLYBOT_TEST_DATABASE_URL uv run alembic check
       - name: offline demo smoke
-        run: uv run polybot demo > demo.txt && grep -q "СИГНАЛ" demo.txt
+        run: uv run polybot demo > demo.txt && grep -q "SIGNAL" demo.txt
 
   image:
     needs: test

@@ -89,7 +89,7 @@ Odpowiedzialny: Mikhailo Ivanyshyn (Orlixx003).
 | #25 US16: Jako klient chcę ponownie sprawdzić alert przed postawieniem zakładu | ✅ | przycisk „Sprawdź ponownie”: nowa rewizja albo zamknięcie karty |
 | #26 US17: Jako klient chcę ustawić budżet i dostać stawki dopasowane do budżetu | ✅ | `/budget`, kroki i minimalne rozmiary platform |
 | #27 US18: Jako klient chcę widzieć wynik przy odwołaniu/przełożeniu meczu i zasady rozliczenia | ✅ | scenariusze wyjątkowe na karcie, przycisk „Zasady” |
-| Zadanie: wersja językowa bota (PL) | ⬜ | komunikaty są dziś po rosyjsku |
+| Zadanie: wersja językowa bota (EN) | ✅ | menu, komunikaty, karty i powiadomienia admina po angielsku |
 
 ## Sprint 7 (21.01–04.02) — wdrożenie i niezawodność
 

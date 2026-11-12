@@ -137,3 +137,26 @@ async def test_quote_polling_survives_cache_outage() -> None:
     svc.catalogs["polymarket"] = await adapters[0].discover()
     svc.approved = {("polymarket", m.external_id) for m in svc.catalogs["polymarket"].markets}
     assert await svc.quotes_once(adapters[0]) == 0  # logged and counted, loop keeps running
+
+
+async def test_opportunity_identity_is_independent_for_each_budget() -> None:
+    _, first = await run(ScanConfig(budget=Decimal(100)))
+    _, equivalent = await run(ScanConfig(budget=Decimal("100.00")))
+    _, other = await run(ScanConfig(budget=Decimal(200)))
+    assert first.drafts and other.drafts
+    assert {d.fingerprint for d in first.drafts} == {d.fingerprint for d in equivalent.drafts}
+    assert not {d.fingerprint for d in first.drafts} & {d.fingerprint for d in other.drafts}
+
+
+async def test_old_opportunity_identity_can_be_rechecked() -> None:
+    from polybot.services.payload import draft_payload
+    from polybot.services.recheck import original_quotes, recheck_with
+    from polybot.services.scanner import fingerprint
+
+    _, scan = await run()
+    draft = scan.drafts[0]
+    payload = draft_payload(draft)
+    payload["fingerprint"] = fingerprint(draft.canonical_market_key, draft.offers)
+    result = recheck_with(payload, original_quotes(payload), ScanConfig(budget=Decimal(200)), fx(), NOW)
+    assert result.draft is not None
+    assert result.draft.fingerprint == draft.fingerprint

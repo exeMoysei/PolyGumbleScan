@@ -8,7 +8,7 @@ wynikiem (P&L) dla każdego scenariusza, wiekiem cen i linkami.
 
 Zakłady stawia użytkownik. Bot nie przechowuje środków, nie handluje i nie używa kluczy API do handlu.
 
-> Interfejs bota w Telegramie (komunikaty, przyciski) jest obecnie po rosyjsku. Dokumentacja jest po polsku.
+> Interfejs bota w Telegramie (komunikaty, przyciski i opisy poleceń) jest po angielsku. Dokumentacja jest po polsku.
 
 ## Jak to działa
 
