@@ -1,26 +1,29 @@
-# Инструкции для агентов (Codex, Claude Code)
+# Instructions for agents (Codex, Claude Code)
 
-Продукт — PolyBot, репозиторий — exeMoysei/PolyGumbleScan. ТЗ и этапы — `docs/TODO.md`, архитектура — `docs/architecture.md`.
-План спринтов и статус issues — `docs/sprinty.md`. Документация (`README.md`, `docs/**`) ведётся на польском.
+The product is PolyBot, the repository is exeMoysei/PolyGumbleScan. Specification stages: `docs/TODO.md`,
+architecture: `docs/architecture.md`, sprint plan and issue status: `docs/sprinty.md`.
 
-## Правила
+Languages: code, comments, commit messages and every bot message are in English. Documentation (`README.md`,
+`docs/**`) is in Polish. Do not use Russian or Ukrainian anywhere in the repository.
 
-* Работать небольшими PR, по одному этапу. Сохранять чужие изменения.
-* `src/polybot/domain` не импортирует SDK, Redis, Telegram, ORM и HTTP. Только стандартная библиотека.
-* Деньги, цены, курсы — только `Decimal` (`polybot.domain.money.dec`), никогда `float`. Время — UTC-aware.
-* Расчёт ставки — только по ask на нужный объём. Last trade/midpoint — диагностика.
-* Неизвестное (лимит, правило, глубина) остаётся `unknown`; ничего не угадывать.
-* Новые связки рынков подтверждает админ; одобрение привязано к версии правил и параметрам.
-* Тестовые данные помечать `TEST DATA` (`tests/fixtures/**`, `_note`). Секреты не коммитить; `.env.example` — только имена.
-* Новый поставщик = новый пакет в `src/polybot/adapters/<name>/` + fixtures + `docs/providers/<name>.md` (probe).
+## Rules
 
-## Проверки перед коммитом
+* Work in small PRs, one stage at a time. Preserve other people's changes.
+* `src/polybot/domain` does not import SDKs, Redis, Telegram, the ORM or HTTP clients. Standard library only.
+* Money, prices and FX rates are `Decimal` only (`polybot.domain.money.dec`), never `float`. Time is UTC-aware.
+* Bet sizing uses the ask side for the required volume only. Last trade and midpoint are diagnostics.
+* Anything unknown (limit, rule, depth) stays `unknown`; never guess.
+* New market mappings are approved by an admin; an approval is tied to the rules version and parameters.
+* Mark test data as `TEST DATA` (`tests/fixtures/**`, `_note`). Never commit secrets; `.env.example` holds names only.
+* A new provider = a new package in `src/polybot/adapters/<name>/` + fixtures + `docs/providers/<name>.md` (probe).
+
+## Checks before committing
 
 ```bash
 uv run ruff check src tests migrations && uv run ruff format --check src tests migrations
-uv run mypy                       # strict на весь пакет
-uv run pytest -q                  # + POLYBOT_TEST_DATABASE_URL / POLYBOT_TEST_REDIS_URL для интеграции
-uv run polybot demo               # офлайн-прогон конвейера
+uv run mypy                       # strict on the whole package
+uv run pytest -q                  # + POLYBOT_TEST_DATABASE_URL / POLYBOT_TEST_REDIS_URL for integration tests
+uv run polybot demo               # offline run of the pipeline
 ```
 
-Изменил модели БД → `uv run alembic revision --autogenerate -m "..."` и проверь `alembic check`.
+Changed the database models → `uv run alembic revision --autogenerate -m "..."` and verify with `alembic check`.

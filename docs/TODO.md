@@ -51,13 +51,13 @@ danymi/kluczami, `[ ]` niezrobione. Kod znajduje się w gałęzi `claude/lucid-w
 ## Etap 4 — Telegram
 - [x] `/start` z menu inline, `/menu`, `/signals`, `/filters`, `/budget`, `/minprofit`, `/help`, `/stop`
 - [x] Karta: wydarzenie i okres, wyniki, platformy, stawki, wolumeny/unknown, wypłaty, min. P&L, wyjątki, czas zrzutu, linki
-- [x] Przyciski „Sprawdź ponownie”, „Zasady”, „Ukryj”; kontrola właściciela i bieżącej rewizji
+- [x] Przyciski „Recheck”, „Rules”, „Hide”; kontrola właściciela i bieżącej rewizji
 - [x] Ponowne sprawdzenie: nowe kursy → nowa rewizja albo zamknięcie karty
 - [x] Admin: `/pending` z akceptacją/odrzuceniem (wg wersji zasad), `/pause`, `/resume`, `/stats` (użytkownicy, wysłane alerty), `/alias`
 - [x] Worker outbox: dzierżawa, backoff, wygasanie, deduplikacja, blokada bota przez użytkownika → subskrypcja wyłączona
 - [x] Maskowanie tokenów, kluczy i haseł w logach
 - [~] Ręczny przebieg z prawdziwym tokenem bota (staging: `POLYBOT_FIXTURES_DIR`)
-- [ ] Wersja językowa bota po polsku (komunikaty są po rosyjsku)
+- [x] Język bota: angielski (komunikaty, przyciski, etykiety scenariuszy); w repozytorium nie ma cyrylicy
 
 ## Etap 5 — VPS i pilotaż
 - [x] Dockerfile, docker-compose (sieć prywatna, metryki tylko na localhost), healthcheck, usługa migrate

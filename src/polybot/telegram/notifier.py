@@ -102,7 +102,7 @@ class Notifier:
                 ):
                     stale = True
                 else:
-                    header = None if row.kind == "signal" else f"🔁 <b>Обновление</b> (рев. {opp.revision})"
+                    header = None if row.kind == "signal" else f"🔁 <b>Update</b> (rev. {opp.revision})"
                     text = render_card(opp.payload, header=header)
                     keyboard = card_keyboard(opp.id, opp.revision, opp.payload)
         if stale or text is None:

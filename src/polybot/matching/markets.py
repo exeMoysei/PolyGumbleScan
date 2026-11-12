@@ -14,7 +14,7 @@ from polybot.domain.scenarios import ScenarioSpace, UnsupportedMarket, build_spa
 from polybot.matching.events import EventCluster
 from polybot.matching.teams import TeamRegistry
 
-DRAW_WORDS = {"draw", "tie", "x", "ничья"}
+DRAW_WORDS = {"draw", "tie", "x"}
 
 
 def canonical_market_key(event_id: str, market_type: MarketType, period: Period, line: Decimal | None) -> str:
@@ -110,7 +110,7 @@ def map_outcome(outcome: ProviderOutcome, space: ScenarioSpace, league: str, reg
         return f"fuzzy_outcome_team:{res.team.id}"
     label = res.team.name
     if outcome.negated:
-        return space.not_team_win(res.team.id, f"НЕ {label}")
+        return space.not_team_win(res.team.id, f"Not {label}")
     return space.team_win(res.team.id, label)
 
 

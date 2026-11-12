@@ -26,7 +26,7 @@ Odpowiedzialni: wspólnie — #1, #15, #16 Mikhailo; #2, #17, #18 Ivan; #13, #14
 
 | Issue | Tytuł | Stan | Uwagi |
 |---|---|---|---|
-| #1 | US1: Bot: komenda /start i menu | ✅ | `/start` zakłada subskrypcję i pokazuje menu z przyciskami inline (Sygnały, Budżet, Filtry, Pomoc); `/menu` |
+| #1 | US1: Bot: komenda /start i menu | ✅ | `/start` zakłada subskrypcję i pokazuje menu z przyciskami inline (Signals, Budget, Filters, Help); `/menu` |
 | #2 | US2: Zapis rynków i alertów w bazie danych | ✅ | PostgreSQL: `markets`, `outcomes`, `opportunities` (alerty z rewizjami), `outbox` (wysyłki), `quote_snapshots` |
 | #13 | Struktura projektu, .env, konfiguracja Ruff i pytest | ✅ | pakiet `src/polybot`, `pyproject.toml`, `.env.example`. **Równolegle istnieje PR #19** (pakiet `polygumblescan`) — do rozstrzygnięcia, patrz niżej |
 | #14 | GitHub Actions: Ruff i testy | ✅ | `.github/workflows/ci.yml` (ruff, mypy, pytest z PostgreSQL/Redis, obraz Dockera). **Równolegle istnieje PR #20** |
@@ -86,10 +86,10 @@ Odpowiedzialny: Mikhailo Ivanyshyn (Orlixx003).
 
 | Issue i historia | Stan | Uwagi |
 |---|---|---|
-| #25 US16: Jako klient chcę ponownie sprawdzić alert przed postawieniem zakładu | ✅ | przycisk „Sprawdź ponownie”: nowa rewizja albo zamknięcie karty |
+| #25 US16: Jako klient chcę ponownie sprawdzić alert przed postawieniem zakładu | ✅ | przycisk „Recheck”: nowa rewizja albo zamknięcie karty |
 | #26 US17: Jako klient chcę ustawić budżet i dostać stawki dopasowane do budżetu | ✅ | `/budget`, kroki i minimalne rozmiary platform |
-| #27 US18: Jako klient chcę widzieć wynik przy odwołaniu/przełożeniu meczu i zasady rozliczenia | ✅ | scenariusze wyjątkowe na karcie, przycisk „Zasady” |
-| Zadanie: wersja językowa bota (PL) | ⬜ | komunikaty są dziś po rosyjsku |
+| #27 US18: Jako klient chcę widzieć wynik przy odwołaniu/przełożeniu meczu i zasady rozliczenia | ✅ | scenariusze wyjątkowe na karcie, przycisk „Rules” |
+| Zadanie: wersja językowa bota | ✅ | wszystkie komunikaty i przyciski bota są po angielsku (decyzja właściciela) |
 
 ## Sprint 7 (21.01–04.02) — wdrożenie i niezawodność
 

@@ -79,8 +79,8 @@ async def load_bundles(s: AsyncSession, keys: set[str] | None = None) -> dict[st
         if b is None:
             home, away = ev.home_team_id, ev.away_team_id
             labels = doc["space"].get("labels", {})
-            hn = labels.get(f"win:{home}", home).removeprefix("Победа ")
-            an = labels.get(f"win:{away}", away).removeprefix("Победа ")
+            hn = labels.get(f"win:{home}", home).removesuffix(" win")
+            an = labels.get(f"win:{away}", away).removesuffix(" win")
             info = EventInfo(ev.id, ev.league, ev.title, ev.start_at, hn, an)
             b = bundles[mp.canonical_market_key] = KeyBundle(mp.canonical_market_key, space, info)
         b.proposals.append(prop)

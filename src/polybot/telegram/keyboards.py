@@ -31,12 +31,12 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="📈 Сигналы", callback_data=MenuCb(action="signals").pack()),
-                InlineKeyboardButton(text="💰 Бюджет", callback_data=MenuCb(action="budget").pack()),
+                InlineKeyboardButton(text="📈 Signals", callback_data=MenuCb(action="signals").pack()),
+                InlineKeyboardButton(text="💰 Budget", callback_data=MenuCb(action="budget").pack()),
             ],
             [
-                InlineKeyboardButton(text="⚙️ Фильтры", callback_data=MenuCb(action="filters").pack()),
-                InlineKeyboardButton(text="ℹ️ Справка", callback_data=MenuCb(action="help").pack()),
+                InlineKeyboardButton(text="⚙️ Filters", callback_data=MenuCb(action="filters").pack()),
+                InlineKeyboardButton(text="ℹ️ Help", callback_data=MenuCb(action="help").pack()),
             ],
         ]
     )
@@ -45,11 +45,9 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
 def card_keyboard(opp_id: int, rev: int, payload: dict[str, Any]) -> InlineKeyboardMarkup:
     rows = [
         [
-            InlineKeyboardButton(
-                text="🔄 Перепроверить", callback_data=OppCb(action="rc", opp_id=opp_id, rev=rev).pack()
-            ),
-            InlineKeyboardButton(text="📜 Правила", callback_data=OppCb(action="rl", opp_id=opp_id, rev=rev).pack()),
-            InlineKeyboardButton(text="🙈 Скрыть", callback_data=OppCb(action="hd", opp_id=opp_id, rev=rev).pack()),
+            InlineKeyboardButton(text="🔄 Recheck", callback_data=OppCb(action="rc", opp_id=opp_id, rev=rev).pack()),
+            InlineKeyboardButton(text="📜 Rules", callback_data=OppCb(action="rl", opp_id=opp_id, rev=rev).pack()),
+            InlineKeyboardButton(text="🙈 Hide", callback_data=OppCb(action="hd", opp_id=opp_id, rev=rev).pack()),
         ]
     ]
     links = [
@@ -68,10 +66,10 @@ def mapping_keyboard(mapping_id: int, rules_version: str) -> InlineKeyboardMarku
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="✅ Подтвердить", callback_data=MapCb(action="a", mapping_id=mapping_id, rv=rv).pack()
+                    text="✅ Approve", callback_data=MapCb(action="a", mapping_id=mapping_id, rv=rv).pack()
                 ),
                 InlineKeyboardButton(
-                    text="⛔ Отклонить", callback_data=MapCb(action="r", mapping_id=mapping_id, rv=rv).pack()
+                    text="⛔ Reject", callback_data=MapCb(action="r", mapping_id=mapping_id, rv=rv).pack()
                 ),
             ]
         ]
@@ -89,11 +87,11 @@ def filters_keyboard(filters: dict[str, Any]) -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=f"{mark('signal' in verdicts)} Сигналы",
+                    text=f"{mark('signal' in verdicts)} Signals",
                     callback_data=FltCb(field="verdict", value="signal").pack(),
                 ),
                 InlineKeyboardButton(
-                    text=f"{mark('candidate' in verdicts)} Кандидаты",
+                    text=f"{mark('candidate' in verdicts)} Candidates",
                     callback_data=FltCb(field="verdict", value="candidate").pack(),
                 ),
             ],

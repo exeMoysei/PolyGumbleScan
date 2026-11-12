@@ -8,7 +8,7 @@ wynikiem (P&L) dla każdego scenariusza, wiekiem cen i linkami.
 
 Zakłady stawia użytkownik. Bot nie przechowuje środków, nie handluje i nie używa kluczy API do handlu.
 
-> Interfejs bota w Telegramie (komunikaty, przyciski) jest obecnie po rosyjsku. Dokumentacja jest po polsku.
+> Interfejs bota w Telegramie (komunikaty, przyciski) oraz kod są po angielsku. Dokumentacja jest po polsku.
 
 ## Jak to działa
 
@@ -71,7 +71,7 @@ uv run pytest -q
 
 | Polecenie | Dla kogo | Opis |
 |---|---|---|
-| `/start`, `/menu` | użytkownik | subskrypcja i menu z przyciskami (Sygnały, Budżet, Filtry, Pomoc) |
+| `/start`, `/menu` | użytkownik | subskrypcja i menu z przyciskami (Signals, Budget, Filters, Help) |
 | `/signals` | użytkownik | aktywne sygnały dla ustawionego budżetu |
 | `/budget 250` | użytkownik | budżet na jedną kombinację |
 | `/filters` | użytkownik | typy alertów (sygnały/kandydaci), trasy, minimalne ROI |

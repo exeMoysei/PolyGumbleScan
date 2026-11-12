@@ -105,14 +105,14 @@ class IngestService:
         targets = [self.settings.tech_chat_id] if self.settings.tech_chat_id else list(self.settings.admin_ids)
         if not targets:
             return
-        lines = [f"🧩 Связки к проверке: {len(changes)}"]
+        lines = [f"🧩 Market mappings to review: {len(changes)}"]
         for c in changes[:15]:
-            prev = f" (было {c.previous.value})" if c.previous else ""
+            prev = f" (was {c.previous.value})" if c.previous else ""
             lines.append(
                 f"• {c.provider} {c.market_external_id}: {c.status.value}{prev}"
                 + (f" — {', '.join(c.reasons[:3])}" if c.reasons else "")
             )
-        lines.append("Открыть очередь: /pending")
+        lines.append("Open the queue: /pending")
         await repo.enqueue_text(
             s, targets, "\n".join(lines), dedup=f"map:{now:%Y%m%d%H%M}:{len(changes)}", now=now, kind="admin"
         )

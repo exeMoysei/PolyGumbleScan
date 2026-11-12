@@ -27,24 +27,24 @@ async def test_card_contains_required_sections() -> None:
     signal = next(p for p in payloads if p["verdict"] == "signal")
     text = render_card(signal)
     for needle in (
-        "СИГНАЛ",
+        "SIGNAL",
         "Los Angeles Lakers @ Boston Celtics",
         "Polymarket",
         "Kalshi",
-        "Победа",
-        "Исключения",
-        "Мин. P&amp;L",
-        "Снимок",
-        "доступно",
+        " win:",
+        "Exceptions",
+        "Min P&amp;L",
+        "Snapshot",
+        "available",
         'href="https://polymarket.com/',
     ):
         assert needle in text, needle
     cand = next(p for p in payloads if p["verdict"] == "candidate")
     ct = render_card(cand)
-    assert "КАНДИДАТ" in ct and "лимит: unknown" in ct and "агрегатором" in ct
+    assert "CANDIDATE" in ct and "limit: unknown" in ct and "aggregator" in ct
     rules = render_rules(signal)
-    assert "отмена" in rules and "50/50" in rules
-    assert "Сигнал закрыт" in render_closed(signal, ["no_longer_profitable"])
+    assert "cancellation" in rules and "50/50" in rules
+    assert "Signal closed" in render_closed(signal, ["no_longer_profitable"])
 
 
 def test_filter_toggles() -> None:
