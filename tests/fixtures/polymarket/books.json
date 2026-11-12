@@ -1,0 +1,273 @@
+{
+ "_note": "TEST DATA \u2014 synthetic fixture in the provider's documented response format. Not real prices.",
+ "books": [
+  {
+   "market": "0x",
+   "asset_id": "tok-lal-0115",
+   "timestamp": "1768520400000",
+   "hash": "h-tok-lal-0115",
+   "min_order_size": "5",
+   "tick_size": "0.01",
+   "neg_risk": false,
+   "asks": [
+    {
+     "price": "0.45",
+     "size": "1000"
+    },
+    {
+     "price": "0.43",
+     "size": "300"
+    },
+    {
+     "price": "0.42",
+     "size": "150"
+    }
+   ],
+   "bids": [
+    {
+     "price": "0.40",
+     "size": "500"
+    }
+   ]
+  },
+  {
+   "market": "0x",
+   "asset_id": "tok-bos-0115",
+   "timestamp": "1768520400000",
+   "hash": "h-tok-bos-0115",
+   "min_order_size": "5",
+   "tick_size": "0.01",
+   "neg_risk": false,
+   "asks": [
+    {
+     "price": "0.60",
+     "size": "500"
+    },
+    {
+     "price": "0.59",
+     "size": "200"
+    }
+   ],
+   "bids": [
+    {
+     "price": "0.57",
+     "size": "400"
+    }
+   ]
+  },
+  {
+   "market": "0x",
+   "asset_id": "tok-nyk-0115",
+   "timestamp": "1768520400000",
+   "hash": "h-tok-nyk-0115",
+   "min_order_size": "5",
+   "tick_size": "0.01",
+   "neg_risk": false,
+   "asks": [
+    {
+     "price": "0.51",
+     "size": "400"
+    }
+   ],
+   "bids": [
+    {
+     "price": "0.49",
+     "size": "400"
+    }
+   ]
+  },
+  {
+   "market": "0x",
+   "asset_id": "tok-mia-0115",
+   "timestamp": "1768520400000",
+   "hash": "h-tok-mia-0115",
+   "min_order_size": "5",
+   "tick_size": "0.01",
+   "neg_risk": false,
+   "asks": [
+    {
+     "price": "0.51",
+     "size": "400"
+    }
+   ],
+   "bids": [
+    {
+     "price": "0.48",
+     "size": "400"
+    }
+   ]
+  },
+  {
+   "market": "0x",
+   "asset_id": "tok-gsw-0115",
+   "timestamp": "1768520400000",
+   "hash": "h-tok-gsw-0115",
+   "min_order_size": "5",
+   "tick_size": "0.01",
+   "neg_risk": false,
+   "asks": [
+    {
+     "price": "0.47",
+     "size": "100"
+    }
+   ],
+   "bids": [
+    {
+     "price": "0.45",
+     "size": "100"
+    }
+   ]
+  },
+  {
+   "market": "0x",
+   "asset_id": "tok-phx-0115",
+   "timestamp": "1768520400000",
+   "hash": "h-tok-phx-0115",
+   "min_order_size": "5",
+   "tick_size": "0.01",
+   "neg_risk": false,
+   "asks": [
+    {
+     "price": "0.55",
+     "size": "100"
+    }
+   ],
+   "bids": [
+    {
+     "price": "0.52",
+     "size": "100"
+    }
+   ]
+  },
+  {
+   "market": "0x",
+   "asset_id": "tok-ars-y",
+   "timestamp": "1768520400000",
+   "hash": "h-tok-ars-y",
+   "min_order_size": "5",
+   "tick_size": "0.01",
+   "neg_risk": false,
+   "asks": [
+    {
+     "price": "0.45",
+     "size": "500"
+    }
+   ],
+   "bids": [
+    {
+     "price": "0.44",
+     "size": "500"
+    }
+   ]
+  },
+  {
+   "market": "0x",
+   "asset_id": "tok-ars-n",
+   "timestamp": "1768520400000",
+   "hash": "h-tok-ars-n",
+   "min_order_size": "5",
+   "tick_size": "0.01",
+   "neg_risk": false,
+   "asks": [
+    {
+     "price": "0.53",
+     "size": "800"
+    },
+    {
+     "price": "0.52",
+     "size": "600"
+    }
+   ],
+   "bids": [
+    {
+     "price": "0.50",
+     "size": "500"
+    }
+   ]
+  },
+  {
+   "market": "0x",
+   "asset_id": "tok-drw-y",
+   "timestamp": "1768520400000",
+   "hash": "h-tok-drw-y",
+   "min_order_size": "5",
+   "tick_size": "0.01",
+   "neg_risk": false,
+   "asks": [
+    {
+     "price": "0.27",
+     "size": "500"
+    }
+   ],
+   "bids": [
+    {
+     "price": "0.26",
+     "size": "500"
+    }
+   ]
+  },
+  {
+   "market": "0x",
+   "asset_id": "tok-drw-n",
+   "timestamp": "1768520400000",
+   "hash": "h-tok-drw-n",
+   "min_order_size": "5",
+   "tick_size": "0.01",
+   "neg_risk": false,
+   "asks": [
+    {
+     "price": "0.74",
+     "size": "500"
+    }
+   ],
+   "bids": [
+    {
+     "price": "0.73",
+     "size": "500"
+    }
+   ]
+  },
+  {
+   "market": "0x",
+   "asset_id": "tok-che-y",
+   "timestamp": "1768520400000",
+   "hash": "h-tok-che-y",
+   "min_order_size": "5",
+   "tick_size": "0.01",
+   "neg_risk": false,
+   "asks": [
+    {
+     "price": "0.30",
+     "size": "500"
+    }
+   ],
+   "bids": [
+    {
+     "price": "0.29",
+     "size": "500"
+    }
+   ]
+  },
+  {
+   "market": "0x",
+   "asset_id": "tok-che-n",
+   "timestamp": "1768520400000",
+   "hash": "h-tok-che-n",
+   "min_order_size": "5",
+   "tick_size": "0.01",
+   "neg_risk": false,
+   "asks": [
+    {
+     "price": "0.71",
+     "size": "500"
+    }
+   ],
+   "bids": [
+    {
+     "price": "0.70",
+     "size": "500"
+    }
+   ]
+  }
+ ]
+}

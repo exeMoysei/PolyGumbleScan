@@ -1,0 +1,56 @@
+{
+ "_note": "TEST DATA \u2014 synthetic fixture in the provider's documented response format. Not real prices.",
+ "events": [
+  {
+   "id": "91000",
+   "slug": "epl-ars-che-2026-01-17",
+   "title": "Arsenal vs. Chelsea",
+   "active": true,
+   "closed": false,
+   "markets": [
+    {
+     "id": "91011",
+     "conditionId": "0xepl1",
+     "question": "Will Arsenal win on 2026-01-17?",
+     "groupItemTitle": "Arsenal",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "clobTokenIds": "[\"tok-ars-y\", \"tok-ars-n\"]",
+     "gameStartTime": "2026-01-17 15:00:00+00",
+     "sportsMarketType": "moneyline",
+     "active": true,
+     "closed": false,
+     "acceptingOrders": true,
+     "description": "This market refers to the Arsenal vs. Chelsea English Premier League match scheduled for January 17, 2026. Resolves Yes if Arsenal wins. This market only covers 90 minutes of regular play plus stoppage time. If the match is postponed, this market will remain open until the match has been completed. If the match is canceled entirely, with no make-up match, this market will resolve to \"No\"."
+    },
+    {
+     "id": "91012",
+     "conditionId": "0xepl2",
+     "question": "Will Arsenal vs. Chelsea end in a draw?",
+     "groupItemTitle": "Draw (Arsenal vs. Chelsea)",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "clobTokenIds": "[\"tok-drw-y\", \"tok-drw-n\"]",
+     "gameStartTime": "2026-01-17 15:00:00+00",
+     "sportsMarketType": "moneyline",
+     "active": true,
+     "closed": false,
+     "acceptingOrders": true,
+     "description": "This market refers to the Arsenal vs. Chelsea English Premier League match scheduled for January 17, 2026. Resolves Yes if the match ends in a draw. This market only covers 90 minutes of regular play plus stoppage time. If the match is postponed, this market will remain open until the match has been completed. If the match is canceled entirely, with no make-up match, this market will resolve to \"No\"."
+    },
+    {
+     "id": "91013",
+     "conditionId": "0xepl3",
+     "question": "Will Chelsea win on 2026-01-17?",
+     "groupItemTitle": "Chelsea",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "clobTokenIds": "[\"tok-che-y\", \"tok-che-n\"]",
+     "gameStartTime": "2026-01-17 15:00:00+00",
+     "sportsMarketType": "moneyline",
+     "active": true,
+     "closed": false,
+     "acceptingOrders": true,
+     "description": "This market refers to the Arsenal vs. Chelsea English Premier League match scheduled for January 17, 2026. Resolves Yes if Chelsea wins. This market only covers 90 minutes of regular play plus stoppage time. If the match is postponed, this market will remain open until the match has been completed. If the match is canceled entirely, with no make-up match, this market will resolve to \"No\"."
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,75 @@
+{
+ "_note": "TEST DATA \u2014 synthetic fixture in the provider's documented response format. Not real prices.",
+ "books": {
+  "KXNBAGAME-26JAN15LALBOS-LAL": {
+   "orderbook_fp": {
+    "yes_dollars": [
+     [
+      "0.4000",
+      "100.00"
+     ],
+     [
+      "0.4100",
+      "200.00"
+     ]
+    ],
+    "no_dollars": [
+     [
+      "0.5400",
+      "300.00"
+     ],
+     [
+      "0.5500",
+      "120.00"
+     ]
+    ]
+   }
+  },
+  "KXNBAGAME-26JAN15LALBOS-BOS": {
+   "orderbook": {
+    "yes": [
+     [
+      51,
+      300
+     ],
+     [
+      52,
+      150
+     ]
+    ],
+    "no": [
+     [
+      45,
+      300
+     ],
+     [
+      46,
+      150
+     ]
+    ]
+   }
+  },
+  "KXNBAGAME-26JAN15DENUTA-DEN": {
+   "orderbook_fp": {
+    "yes_dollars": [
+     [
+      "0.6000",
+      "50.00"
+     ]
+    ],
+    "no_dollars": [
+     [
+      "0.3800",
+      "50.00"
+     ]
+    ]
+   }
+  },
+  "KXNBAGAME-26JAN15DENUTA-UTA": {
+   "orderbook_fp": {
+    "yes_dollars": [],
+    "no_dollars": null
+   }
+  }
+ }
+}

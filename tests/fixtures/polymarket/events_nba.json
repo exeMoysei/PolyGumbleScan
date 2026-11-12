@@ -1,0 +1,77 @@
+{
+ "_note": "TEST DATA \u2014 synthetic fixture in the provider's documented response format. Not real prices.",
+ "events": [
+  {
+   "id": "90001",
+   "slug": "nba-lal-bos-2026-01-15",
+   "title": "Lakers vs. Celtics",
+   "active": true,
+   "closed": false,
+   "markets": [
+    {
+     "id": "900011",
+     "conditionId": "0xcond90001",
+     "question": "Lakers vs. Celtics",
+     "outcomes": "[\"Lakers\", \"Celtics\"]",
+     "clobTokenIds": "[\"tok-lal-0115\", \"tok-bos-0115\"]",
+     "gameStartTime": "2026-01-16 00:30:00+00",
+     "sportsMarketType": "moneyline",
+     "active": true,
+     "closed": false,
+     "acceptingOrders": true,
+     "orderPriceMinTickSize": 0.01,
+     "orderMinSize": 5,
+     "description": "In the upcoming NBA game, scheduled for January 15 at 7:30PM ET: If the Los Angeles Lakers win, the market will resolve to \"Lakers\". If the Boston Celtics win, the market will resolve to \"Celtics\". The result includes overtime. If the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50. The primary resolution source is the official statistics of the NBA."
+    }
+   ]
+  },
+  {
+   "id": "90002",
+   "slug": "nba-nyk-mia-2026-01-15",
+   "title": "Knicks vs. Heat",
+   "active": true,
+   "closed": false,
+   "markets": [
+    {
+     "id": "900021",
+     "conditionId": "0xcond90002",
+     "question": "Knicks vs. Heat",
+     "outcomes": "[\"Knicks\", \"Heat\"]",
+     "clobTokenIds": "[\"tok-nyk-0115\", \"tok-mia-0115\"]",
+     "gameStartTime": "2026-01-16 01:05:00+00",
+     "sportsMarketType": "moneyline",
+     "active": true,
+     "closed": false,
+     "acceptingOrders": true,
+     "orderPriceMinTickSize": 0.01,
+     "orderMinSize": 5,
+     "description": "In the upcoming NBA game, scheduled for January 15 at 8:00PM ET: If the New York Knicks win, the market will resolve to \"Knicks\". If the Miami Heat win, the market will resolve to \"Heat\". The result includes overtime. If the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50. The primary resolution source is the official statistics of the NBA."
+    }
+   ]
+  },
+  {
+   "id": "90003",
+   "slug": "nba-gsw-phx-2026-01-15",
+   "title": "Warriors vs. Suns",
+   "active": true,
+   "closed": false,
+   "markets": [
+    {
+     "id": "900031",
+     "conditionId": "0xcond90003",
+     "question": "Warriors vs. Suns",
+     "outcomes": "[\"Warriors\", \"Suns\"]",
+     "clobTokenIds": "[\"tok-gsw-0115\", \"tok-phx-0115\"]",
+     "gameStartTime": "2026-01-16 03:00:00+00",
+     "sportsMarketType": "moneyline",
+     "active": true,
+     "closed": false,
+     "acceptingOrders": true,
+     "orderPriceMinTickSize": 0.01,
+     "orderMinSize": 5,
+     "description": "In the upcoming NBA game, scheduled for January 15 at 10:00PM ET: If the Golden State Warriors win, the market will resolve to \"Warriors\". If the Phoenix Suns win, the market will resolve to \"Suns\". The result includes overtime. If the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50. The primary resolution source is the official statistics of the NBA."
+    }
+   ]
+  }
+ ]
+}

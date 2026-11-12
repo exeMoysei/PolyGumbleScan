@@ -1,0 +1,91 @@
+# PolyBot on a single VPS. Only Prometheus metrics of the app are bound to localhost; PostgreSQL and
+# Redis stay on the private compose network. Images are pinned to a commit SHA via POLYBOT_IMAGE.
+x-app: &app
+  image: ${POLYBOT_IMAGE:-ghcr.io/exemoysei/polygumblescan:latest}
+  env_file: .env
+  environment:
+    POLYBOT_DATABASE_URL: postgresql+asyncpg://polybot:${POSTGRES_PASSWORD}@postgres:5432/polybot
+    POLYBOT_REDIS_URL: redis://redis:6379/0
+  restart: unless-stopped
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+    redis:
+      condition: service_healthy
+  networks: [private]
+  logging:
+    driver: json-file
+    options: {max-size: "20m", max-file: "5"}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: polybot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: polybot
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U polybot -d polybot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks: [private]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "no", "--save", "", "--maxmemory", "256mb",
+              "--maxmemory-policy", "volatile-ttl"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks: [private]
+
+  migrate:
+    <<: *app
+    command: ["migrate"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ingest:
+    <<: *app
+    command: ["run-ingest"]
+    ports: ["127.0.0.1:9101:9108"]
+
+  scan:
+    <<: *app
+    command: ["run-scan"]
+    ports: ["127.0.0.1:9102:9108"]
+
+  bot:
+    <<: *app
+    command: ["run-bot"]
+    ports: ["127.0.0.1:9103:9108"]
+
+  backup:
+    image: postgres:16-alpine
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./backups:/backups
+      - ./ops/backup.sh:/backup.sh:ro
+      - ./ops/restore_test.sh:/restore_test.sh:ro
+    entrypoint: ["/bin/sh", "-c", "while true; do /bin/sh /backup.sh; sleep 21600; done"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks: [private]
+
+volumes:
+  pgdata:
+
+networks:
+  private:

@@ -1,0 +1,17 @@
+groups:
+  - name: polybot
+    rules:
+      - alert: PolybotFeedErrors
+        expr: increase(polybot_feed_errors_total[15m]) > 5
+        labels: {severity: warning}
+        annotations: {summary: "Feed {{ $labels.provider }} failing ({{ $labels.stage }})"}
+      - alert: PolybotNoQuotes
+        expr: sum by (provider) (increase(polybot_quotes_total[15m])) == 0
+        for: 15m
+        labels: {severity: warning}
+      - alert: PolybotOddsApiQuotaLow
+        expr: polybot_api_quota_remaining{provider="oddsapi"} < 500
+        labels: {severity: warning}
+      - alert: PolybotOutboxFailures
+        expr: increase(polybot_outbox_total{status=~"failed|expired"}[30m]) > 10
+        labels: {severity: warning}
