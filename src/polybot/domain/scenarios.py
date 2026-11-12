@@ -12,8 +12,8 @@ from decimal import Decimal
 from polybot.domain.enums import MarketType, Period, ScenarioKind
 from polybot.domain.models import Scenario, Selection
 
-CANCELLED = Scenario("cancelled", ScenarioKind.EXCEPTIONAL, "Матч отменён")
-POSTPONED = Scenario("postponed", ScenarioKind.EXCEPTIONAL, "Перенос за пределы отсечки")
+CANCELLED = Scenario("cancelled", ScenarioKind.EXCEPTIONAL, "Event cancelled")
+POSTPONED = Scenario("postponed", ScenarioKind.EXCEPTIONAL, "Postponed beyond the cutoff")
 EXCEPTIONAL_SCENARIOS: tuple[Scenario, ...] = (CANCELLED, POSTPONED)
 
 DRAW_ID = "draw"
@@ -81,15 +81,15 @@ class ScenarioSpace:
         )
         wins = self.regular_ids - {win_id(team_id)} - undefined
         return Selection(
-            key=f"not_win:{team_id}", label=label or f"не {team_id}", wins=wins, undefined=undefined, negated=True
+            key=f"not_win:{team_id}", label=label or f"NOT {team_id}", wins=wins, undefined=undefined, negated=True
         )
 
-    def draw(self, label: str = "Ничья") -> Selection:
+    def draw(self, label: str = "Draw") -> Selection:
         if not self.has_draw():
             raise UnsupportedMarket("draw is impossible in this scenario space")
         return Selection(key="draw", label=label, wins=frozenset({DRAW_ID}))
 
-    def not_draw(self, label: str = "Не ничья") -> Selection:
+    def not_draw(self, label: str = "Not a draw") -> Selection:
         if not self.has_draw():
             raise UnsupportedMarket("draw is impossible in this scenario space")
         return Selection(key="not_draw", label=label, wins=self.regular_ids - {DRAW_ID}, negated=True)
@@ -98,14 +98,14 @@ class ScenarioSpace:
         self._require_total()
         pushes = frozenset({"push"}) if "push" in self.regular_ids else frozenset()
         return Selection(
-            key=f"over:{self.line}", label=label or f"Больше {self.line}", wins=frozenset({"over"}), pushes=pushes
+            key=f"over:{self.line}", label=label or f"Over {self.line}", wins=frozenset({"over"}), pushes=pushes
         )
 
     def under(self, label: str | None = None) -> Selection:
         self._require_total()
         pushes = frozenset({"push"}) if "push" in self.regular_ids else frozenset()
         return Selection(
-            key=f"under:{self.line}", label=label or f"Меньше {self.line}", wins=frozenset({"under"}), pushes=pushes
+            key=f"under:{self.line}", label=label or f"Under {self.line}", wins=frozenset({"under"}), pushes=pushes
         )
 
     def _require_team(self, team_id: str) -> None:
@@ -133,11 +133,11 @@ def build_space(
     home, away = teams
     if market_type in (MarketType.MONEYLINE, MarketType.MATCH_RESULT):
         regular = [
-            Scenario(win_id(home), ScenarioKind.REGULAR, f"Победа {labels.get(home, home)}"),
-            Scenario(win_id(away), ScenarioKind.REGULAR, f"Победа {labels.get(away, away)}"),
+            Scenario(win_id(home), ScenarioKind.REGULAR, f"Win: {labels.get(home, home)}"),
+            Scenario(win_id(away), ScenarioKind.REGULAR, f"Win: {labels.get(away, away)}"),
         ]
         if market_type == MarketType.MATCH_RESULT or draw_possible(sport, period):
-            regular.insert(1, Scenario(DRAW_ID, ScenarioKind.REGULAR, "Ничья"))
+            regular.insert(1, Scenario(DRAW_ID, ScenarioKind.REGULAR, "Draw"))
         return ScenarioSpace(sport, market_type, period, teams, None, tuple(regular))
     if market_type == MarketType.TOTAL:
         if line is None:
@@ -145,14 +145,14 @@ def build_space(
         frac = line % 1
         if frac == Decimal("0.5"):
             regular = [
-                Scenario("over", ScenarioKind.REGULAR, f"Тотал > {line}"),
-                Scenario("under", ScenarioKind.REGULAR, f"Тотал < {line}"),
+                Scenario("over", ScenarioKind.REGULAR, f"Total > {line}"),
+                Scenario("under", ScenarioKind.REGULAR, f"Total < {line}"),
             ]
         elif frac == 0:
             regular = [
-                Scenario("over", ScenarioKind.REGULAR, f"Тотал > {line}"),
-                Scenario("push", ScenarioKind.REGULAR, f"Тотал = {line} (возврат)"),
-                Scenario("under", ScenarioKind.REGULAR, f"Тотал < {line}"),
+                Scenario("over", ScenarioKind.REGULAR, f"Total > {line}"),
+                Scenario("push", ScenarioKind.REGULAR, f"Total = {line} (refund)"),
+                Scenario("under", ScenarioKind.REGULAR, f"Total < {line}"),
             ]
         else:
             raise UnsupportedMarket(f"asian/quarter line {line} is not supported in MVP")

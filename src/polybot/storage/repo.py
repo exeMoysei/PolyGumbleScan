@@ -491,6 +491,8 @@ async def publish_draft(
         )
     ).scalar_one_or_none()
     if cur is not None and cur.signature == sig:
+        payload["revision"] = cur.revision
+        cur.payload, cur.snapshot_at = payload, d.snapshot_at
         cur.expires_at, cur.updated_at = d.expires_at, now
         return PublishResult(cur.id, cur.revision, False, False, 0)
     if cur is None:
@@ -512,6 +514,8 @@ async def publish_draft(
             and not str(last.closed_reason or "").startswith(("recheck", "mapping"))
         ):
             last.status, last.closed_reason, last.closed_at = OpportunityStatus.ACTIVE.value, None, None
+            payload["revision"] = last.revision
+            last.payload, last.snapshot_at = payload, d.snapshot_at
             last.expires_at, last.updated_at = d.expires_at, now
             return PublishResult(last.id, last.revision, False, False, 0)
     revision = 1
@@ -648,9 +652,17 @@ async def outbox_done(
     return bool(getattr(res, "rowcount", 0))
 
 
-async def outbox_retry(s: AsyncSession, row: Outbox, owner: str, error: str, now: datetime, max_attempts: int) -> str:
+async def outbox_retry(
+    s: AsyncSession,
+    row: Outbox,
+    owner: str,
+    error: str,
+    now: datetime,
+    max_attempts: int,
+    retry_after: float | None = None,
+) -> str:
     attempts = row.attempts + 1
-    delay = timedelta(seconds=min(2**attempts, 300))
+    delay = timedelta(seconds=max(min(2**attempts, 300), retry_after or 0))
     status = "pending"
     if attempts >= max_attempts:
         status = "failed"

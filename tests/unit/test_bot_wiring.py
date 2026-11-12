@@ -63,3 +63,24 @@ def test_subscription_min_profit_filter() -> None:
     assert not subscription_accepts(sub, payload)
     sub.filters = {"verdicts": ["signal"], "min_profit": None}
     assert subscription_accepts(sub, payload)
+
+
+async def test_budget_rejects_nonfinite_values_without_crashing() -> None:
+    from decimal import Decimal
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from aiogram.filters import CommandObject
+
+    from polybot.telegram.bot import cmd_budget
+
+    session = MagicMock()
+    session.__aenter__.return_value = session
+    ctx = BotContext(Settings(odds_api_key=None), sessions=MagicMock(return_value=session))
+    sub = SimpleNamespace(budget=Decimal(100))
+    message = SimpleNamespace(from_user=SimpleNamespace(id=1), chat=SimpleNamespace(id=1), answer=AsyncMock())
+    with patch("polybot.telegram.bot.repo.ensure_subscription", new=AsyncMock(return_value=sub)):
+        for value in ("NaN", "sNaN", "Infinity", "-Infinity"):
+            await cmd_budget(message, CommandObject(command="budget", args=value), ctx)  # type: ignore[arg-type]
+            assert "Budget must be between" in message.answer.call_args.args[0]
+            assert sub.budget == Decimal(100)

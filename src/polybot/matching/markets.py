@@ -110,7 +110,7 @@ def map_outcome(outcome: ProviderOutcome, space: ScenarioSpace, league: str, reg
         return f"fuzzy_outcome_team:{res.team.id}"
     label = res.team.name
     if outcome.negated:
-        return space.not_team_win(res.team.id, f"НЕ {label}")
+        return space.not_team_win(res.team.id, f"NOT {label}")
     return space.team_win(res.team.id, label)
 
 

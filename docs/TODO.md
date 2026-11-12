@@ -3,7 +3,7 @@
 Plan sprintów i stan issues z GitHuba: [sprinty.md](sprinty.md).
 
 Legenda: `[x]` zrobione i sprawdzone testami/przebiegiem, `[~]` zrobione, wymaga sprawdzenia na VPS z żywymi
-danymi/kluczami, `[ ]` niezrobione. Kod znajduje się w gałęzi `claude/lucid-wright-faibu5` (jeszcze nie w `main`).
+danymi/kluczami, `[ ]` niezrobione. Podstawowa implementacja znajduje się w `main`.
 
 ## Etap 0 — audyt
 - [x] Inwentaryzacja repozytorium (był tylko README) — `docs/stage0-audit.md`
@@ -57,7 +57,7 @@ danymi/kluczami, `[ ]` niezrobione. Kod znajduje się w gałęzi `claude/lucid-w
 - [x] Worker outbox: dzierżawa, backoff, wygasanie, deduplikacja, blokada bota przez użytkownika → subskrypcja wyłączona
 - [x] Maskowanie tokenów, kluczy i haseł w logach
 - [~] Ręczny przebieg z prawdziwym tokenem bota (staging: `POLYBOT_FIXTURES_DIR`)
-- [ ] Wersja językowa bota po polsku (komunikaty są po rosyjsku)
+- [x] Angielski interfejs bota, karty, menu, komunikaty admina i odczyt starszych etykiet
 
 ## Etap 5 — VPS i pilotaż
 - [x] Dockerfile, docker-compose (sieć prywatna, metryki tylko na localhost), healthcheck, usługa migrate

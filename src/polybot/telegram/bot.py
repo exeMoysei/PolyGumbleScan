@@ -24,7 +24,7 @@ from polybot.services.recheck import fetch_fresh, recheck_with
 from polybot.settings import Settings
 from polybot.storage import repo
 from polybot.storage.models import MarketMapping, Opportunity, Subscription
-from polybot.telegram.cards import reason_ru, render_card, render_closed, render_rules
+from polybot.telegram.cards import english_label, reason_en, render_card, render_closed, render_rules
 from polybot.telegram.keyboards import (
     FltCb,
     MapCb,
@@ -41,20 +41,20 @@ log = logging.getLogger(__name__)
 router = Router(name="polybot")
 
 HELP = (
-    "<b>PolyBot</b> ищет комбинации ставок на одно событие на prediction markets и в букмекерах, "
-    "где выплата покрывает вложения во всех обычных исходах.\n\n"
-    "/signals — активные сигналы под ваш бюджет\n"
-    "/budget 250 — установить бюджет на одну комбинацию\n"
-    "/filters — что присылать (сигналы/кандидаты, маршруты, ROI)\n"
-    "/minprofit 2.5 — минимальная прибыль для уведомлений (0 — сбросить)\n"
-    "/stop — приостановить рассылку\n"
-    "/help — справка\n\n"
-    "✅ <b>Сигнал</b> — проверенные правила, известные лимиты, без убытка в описанных исключениях.\n"
-    "🟡 <b>Кандидат</b> — есть риск (неизвестный лимит, цена только от агрегатора, убыток при отмене).\n"
-    "Ставки размещаете вы сами; бот не хранит средства и не торгует."
+    "<b>PolyBot</b> finds combinations of bets on the same event across prediction markets and sportsbooks, "
+    "where the payout covers the investment in every regular outcome.\n\n"
+    "/signals — active signals for your budget\n"
+    "/budget 250 — set the budget per combination\n"
+    "/filters — alert types, routes and minimum ROI\n"
+    "/minprofit 2.5 — minimum alert profit (0 to reset)\n"
+    "/stop — pause alerts\n"
+    "/help — help\n\n"
+    "✅ <b>Signal</b> — reviewed rules, known limits, no loss in the described exceptions.\n"
+    "🟡 <b>Candidate</b> — risk flagged (unknown limits, aggregator-only prices or cancellation losses).\n"
+    "You place the bets yourself. The bot scans markets and sends alerts."
 )
 ADMIN_HELP = (
-    "\n\n<b>Админ:</b> /pending — очередь связок, /pause, /resume — публикация, /stats, "
+    "\n\n<b>Admin:</b> /pending — review mappings, /pause, /resume — publishing, /stats, "
     "/alias &lt;league&gt; &lt;alias&gt; &lt;team_id&gt;"
 )
 
@@ -82,14 +82,14 @@ async def cmd_start(message: Message, ctx: BotContext) -> None:
         budget = sub.budget
     text = HELP + (ADMIN_HELP if ctx.is_admin(message.from_user.id) else "")
     await message.answer(
-        f"Подписка активна. Бюджет: {Decimal(budget):.2f} {ctx.settings.budget_currency}.\n\n{text}",
+        f"Subscription active. Budget: {Decimal(budget):.2f} {ctx.settings.budget_currency}.\n\n{text}",
         reply_markup=main_menu_keyboard(),
     )
 
 
 @router.message(Command("menu"))
 async def cmd_menu(message: Message) -> None:
-    await message.answer("Меню:", reply_markup=main_menu_keyboard())
+    await message.answer("Menu:", reply_markup=main_menu_keyboard())
 
 
 @router.callback_query(MenuCb.filter())
@@ -106,7 +106,7 @@ async def cb_menu(query: CallbackQuery, callback_data: MenuCb, ctx: BotContext) 
         async with ctx.sessions() as s:
             sub = await s.get(Subscription, msg.chat.id)
         budget = Decimal(sub.budget) if sub else ctx.settings.default_budget
-        await msg.answer(f"Текущий бюджет: {budget:.2f} {ctx.settings.budget_currency}. Изменить: /budget 250")
+        await msg.answer(f"Current budget: {budget:.2f} {ctx.settings.budget_currency}. Change it with /budget 250")
     else:
         await msg.answer(HELP + (ADMIN_HELP if ctx.is_admin(query.from_user.id) else ""))
 
@@ -123,7 +123,7 @@ async def cmd_stop(message: Message, ctx: BotContext) -> None:
         sub = await s.get(Subscription, message.chat.id)
         if sub:
             sub.active = False
-    await message.answer("Рассылка приостановлена. /start — включить снова.")
+    await message.answer("Alerts paused. Use /start to resume.")
 
 
 @router.message(Command("budget"))
@@ -133,28 +133,28 @@ async def cmd_budget(message: Message, command: CommandObject, ctx: BotContext) 
         sub = await repo.ensure_subscription(s, message.chat.id, message.from_user.id, ctx.settings.default_budget)
         if not command.args:
             await message.answer(
-                f"Текущий бюджет: {Decimal(sub.budget):.2f} {ctx.settings.budget_currency}. Изменить: /budget 250"
+                f"Current budget: {Decimal(sub.budget):.2f} {ctx.settings.budget_currency}. Change it with /budget 250"
             )
             return
         try:
             value = Decimal(command.args.strip().replace(",", "."))
         except InvalidOperation:
-            await message.answer("Не понял сумму. Пример: /budget 250")
+            await message.answer("Invalid amount. Example: /budget 250")
             return
-        if not (Decimal(10) <= value <= ctx.settings.max_budget):
-            await message.answer(f"Бюджет должен быть от 10 до {ctx.settings.max_budget}.")
+        if not value.is_finite() or not (Decimal(10) <= value <= ctx.settings.max_budget):
+            await message.answer(f"Budget must be between 10 and {ctx.settings.max_budget}.")
             return
         sub.budget = value.quantize(Decimal(1))
     await message.answer(
-        f"Бюджет установлен: {value.quantize(Decimal(1))} {ctx.settings.budget_currency}. "
-        "Расчёт под него появится на следующем цикле сканера."
+        f"Budget set: {value.quantize(Decimal(1))} {ctx.settings.budget_currency}. "
+        "Calculations for this budget will appear on the next scan."
     )
 
 
 def _filters_text(filters: dict[str, Any], currency: str) -> str:
     mp = filters.get("min_profit")
-    line = f"мин. прибыль {mp} {currency}" if mp else "мин. прибыль не задана (/minprofit 2.5)"
-    return f"Что присылать ({line}):"
+    line = f"minimum profit {mp} {currency}" if mp else "minimum profit is not set (/minprofit 2.5)"
+    return f"Alert settings ({line}):"
 
 
 async def _send_filters(message: Message, user_id: int, ctx: BotContext) -> None:
@@ -186,7 +186,9 @@ async def cmd_minprofit(message: Message, command: CommandObject, ctx: BotContex
     assert message.from_user is not None
     value = parse_min_profit(command.args, ctx.settings.max_budget)
     if value is None:
-        await message.answer("Формат: /minprofit 2.5 (в валюте бюджета). /minprofit 0 — убрать порог.")
+        await message.answer(
+            "Usage: /minprofit 2.5 (in your budget currency). Use /minprofit 0 to remove the threshold."
+        )
         return
     async with ctx.sessions() as s, s.begin():
         sub = await repo.ensure_subscription(s, message.chat.id, message.from_user.id, ctx.settings.default_budget)
@@ -194,11 +196,9 @@ async def cmd_minprofit(message: Message, command: CommandObject, ctx: BotContex
         filters["min_profit"] = str(value) if value > 0 else None
         sub.filters = filters
     if value > 0:
-        await message.answer(
-            f"Буду присылать только сигналы с мин. прибылью от {value} {ctx.settings.budget_currency}."
-        )
+        await message.answer(f"Alerts will require a minimum profit of {value} {ctx.settings.budget_currency}.")
     else:
-        await message.answer("Порог прибыли убран.")
+        await message.answer("Profit threshold removed.")
 
 
 @router.callback_query(FltCb.filter())
@@ -209,13 +209,13 @@ async def cb_filter(query: CallbackQuery, callback_data: FltCb, ctx: BotContext)
     async with ctx.sessions() as s, s.begin():
         sub = await s.get(Subscription, msg.chat.id)
         if not _owner_ok(sub, query.from_user.id):
-            await query.answer("Это не ваша подписка", show_alert=True)
+            await query.answer("This subscription belongs to another user", show_alert=True)
             return
         assert sub is not None
         sub.filters = toggle_filter(sub.filters or {}, callback_data.field, callback_data.value)
         filters = dict(sub.filters)
     await msg.edit_reply_markup(reply_markup=filters_keyboard(filters))
-    await query.answer("Сохранено")
+    await query.answer("Saved")
 
 
 async def _send_signals(message: Message, ctx: BotContext) -> None:
@@ -226,9 +226,7 @@ async def _send_signals(message: Message, ctx: BotContext) -> None:
         if sub:
             opps = [o for o in opps if repo.subscription_accepts(sub, o.payload)]
     if not opps:
-        await message.answer(
-            f"Сейчас нет активных сигналов под бюджет {budget:.0f}. Сканер работает — новые придут автоматически."
-        )
+        await message.answer(f"No active signals for a budget of {budget:.0f}. New alerts will be sent when available.")
         return
     for o in opps:
         await message.answer(
@@ -250,11 +248,11 @@ async def _load_card(s: AsyncSession, query: CallbackQuery, data: OppCb) -> Oppo
         return None
     sub = await s.get(Subscription, msg.chat.id)
     if not _owner_ok(sub, query.from_user.id) and query.from_user.id != msg.chat.id:
-        await query.answer("Карточка принадлежит другому пользователю", show_alert=True)
+        await query.answer("This card belongs to another user", show_alert=True)
         return None
     opp = await s.get(Opportunity, data.opp_id)
     if opp is None or opp.revision != data.rev:
-        await query.answer("Карточка устарела", show_alert=True)
+        await query.answer("This card is out of date", show_alert=True)
         return None
     return opp
 
@@ -278,7 +276,7 @@ async def cb_hide(query: CallbackQuery, callback_data: OppCb, ctx: BotContext) -
             return
         assert isinstance(query.message, Message)
         await repo.hide(s, query.message.chat.id, opp.fingerprint)
-    await query.answer("Скрыто: обновления этой связки больше не придут")
+    await query.answer("Hidden: updates for this combination are muted")
     if isinstance(query.message, Message):
         await query.message.delete()
 
@@ -291,21 +289,32 @@ async def cb_recheck(query: CallbackQuery, callback_data: OppCb, ctx: BotContext
             return
         latest = await repo.latest_revision(s, opp.fingerprint)
         if latest is not None and latest.revision != opp.revision:
-            await query.answer("Есть более новая ревизия — показываю её")
+            await query.answer("A newer revision is available — showing it now")
             if isinstance(query.message, Message):
-                await query.message.answer(
-                    render_card(latest.payload), reply_markup=card_keyboard(latest.id, latest.revision, latest.payload)
-                )
+                if latest.status == "active" and latest.expires_at > datetime.now(UTC):
+                    await query.message.answer(
+                        render_card(latest.payload),
+                        reply_markup=card_keyboard(latest.id, latest.revision, latest.payload),
+                    )
+                else:
+                    await query.message.answer(render_closed(latest.payload, [latest.closed_reason or "quote_stale"]))
+            return
+        expected = {
+            (leg["market"]["provider"], leg["market"]["external_id"], leg["rules_version"])
+            for leg in opp.payload["legs"]
+        }
+        if not expected <= await repo.approved_markets(s):
+            await query.answer("Market approval has changed. Wait for a reviewed signal.", show_alert=True)
             return
         subs = await repo.active_subscriptions(s)
-    await query.answer("Перепроверяю…")
-    now = datetime.now(UTC)
+    await query.answer("Rechecking…")
     payload: dict[str, Any] = opp.payload
     try:
         quotes = await fetch_fresh(payload, ctx.adapters)
     except Exception:
         log.exception("recheck fetch failed")
         quotes = []
+    now = datetime.now(UTC)
     cfg = scan_config_from(ctx.settings, Decimal(payload["budget"]))
     result = recheck_with(payload, quotes, cfg, fx_table_from(ctx.settings, now), now)
     msg = query.message
@@ -320,12 +329,18 @@ async def cb_recheck(query: CallbackQuery, callback_data: OppCb, ctx: BotContext
         await msg.edit_text(render_closed(payload, list(result.reasons)))
         return
     async with ctx.sessions() as s, s.begin():
+        if not expected <= await repo.approved_markets(s):
+            await msg.edit_text(render_closed(payload, ["mapping_invalidated"]))
+            return
         # the user who asked gets the card directly; others are notified only on material change
-        pub = await repo.publish_draft(s, result.draft, [x for x in subs if x.chat_id != msg.chat.id], now)
+        paused = await repo.get_flag(s, repo.PUBLISHING_PAUSED) == "1"
+        pub = await repo.publish_draft(
+            s, result.draft, [x for x in subs if x.chat_id != msg.chat.id], now, paused=paused
+        )
         fresh = await s.get(Opportunity, pub.opportunity_id)
     assert fresh is not None
     metrics.RECHECKS.labels("updated" if pub.material else "unchanged").inc()
-    header = None if not pub.material else f"🔄 <b>Перепроверено</b> (рев. {fresh.revision})"
+    header = None if not pub.material else f"🔄 <b>Rechecked</b> (rev. {fresh.revision})"
     await msg.edit_text(
         render_card(fresh.payload, header=header) if header else render_card(fresh.payload),
         reply_markup=card_keyboard(fresh.id, fresh.revision, fresh.payload),
@@ -337,26 +352,27 @@ async def cb_recheck(query: CallbackQuery, callback_data: OppCb, ctx: BotContext
 def _mapping_text(m: MarketMapping, market_title: str, provider: str) -> str:
     doc = m.proposal
     outs = "\n".join(
-        f"   • {escape(o['label'])} → <code>{escape(o['selection']['key'])}</code>" for o in doc.get("outcomes", [])
+        f"   • {escape(english_label(o['label']))} → <code>{escape(o['selection']['key'])}</code>"
+        for o in doc.get("outcomes", [])
     )
     rules = doc.get("market", {}).get("rules", {})
     reasons = (
         ", ".join(
-            reason_ru(r) if not r.startswith(("rules_", "event_", "start_", "fuzzy", "role")) else r
+            reason_en(r) if not r.startswith(("rules_", "event_", "start_", "fuzzy", "role")) else r
             for r in (m.reasons or [])
         )
         or "—"
     )
     return (
-        f"🧩 <b>Связка #{m.id}</b> · {m.status}\n"
-        f"Событие: <code>{escape(m.canonical_event_id)}</code>\n"
-        f"Ключ: <code>{escape(m.canonical_market_key)}</code>\n"
-        f"Площадка: <b>{escape(provider)}</b> — {escape(market_title)}\n"
-        f"Исходы:\n{outs}\n"
-        f"Правила: отмена={rules.get('on_cancel')}, перенос={rules.get('on_postpone')}, "
-        f"ничья={rules.get('on_draw')}, ОТ={rules.get('ot')}{' (по умолчанию)' if rules.get('assumed') else ''}\n"
-        f"Замечания: {escape(reasons)}\n"
-        f"Версия правил: <code>{escape(m.rules_version)}</code>"
+        f"🧩 <b>Mapping #{m.id}</b> · {m.status}\n"
+        f"Event: <code>{escape(m.canonical_event_id)}</code>\n"
+        f"Key: <code>{escape(m.canonical_market_key)}</code>\n"
+        f"Venue: <b>{escape(provider)}</b> — {escape(market_title)}\n"
+        f"Outcomes:\n{outs}\n"
+        f"Rules: cancellation={rules.get('on_cancel')}, postponement={rules.get('on_postpone')}, "
+        f"draw={rules.get('on_draw')}, OT={rules.get('ot')}{' (assumed)' if rules.get('assumed') else ''}\n"
+        f"Notes: {escape(reasons)}\n"
+        f"Rules version: <code>{escape(m.rules_version)}</code>"
     )
 
 
@@ -367,7 +383,7 @@ async def cmd_pending(message: Message, ctx: BotContext) -> None:
     async with ctx.sessions() as s:
         rows = await repo.pending_mappings(s, limit=8)
     if not rows:
-        await message.answer("Очередь проверки пуста ✅")
+        await message.answer("The review queue is empty ✅")
         return
     for m, mrow in rows:
         await message.answer(
@@ -379,13 +395,13 @@ async def cmd_pending(message: Message, ctx: BotContext) -> None:
 @router.callback_query(MapCb.filter())
 async def cb_mapping(query: CallbackQuery, callback_data: MapCb, ctx: BotContext) -> None:
     if not ctx.is_admin(query.from_user.id):
-        await query.answer("Только для администраторов", show_alert=True)
+        await query.answer("Admin access required", show_alert=True)
         return
     now = datetime.now(UTC)
     async with ctx.sessions() as s, s.begin():
         current = await s.get(MarketMapping, callback_data.mapping_id)
         if current is None or not current.rules_version.startswith(callback_data.rv):
-            await query.answer("Правила изменились — откройте /pending заново", show_alert=True)
+            await query.answer("Rules have changed — reopen /pending", show_alert=True)
             return
         row = await repo.decide_mapping(
             s, callback_data.mapping_id, callback_data.action == "a", query.from_user.id, "telegram", now
@@ -393,10 +409,10 @@ async def cb_mapping(query: CallbackQuery, callback_data: MapCb, ctx: BotContext
         status = row.status if row else "?"
         if row is not None and status == MappingStatus.REJECTED.value:
             await repo.invalidate_by_markets(s, {row.canonical_market_key}, now)
-    await query.answer(f"Статус: {status}")
+    await query.answer(f"Status: {status}")
     if isinstance(query.message, Message):
         await query.message.edit_reply_markup(reply_markup=None)
-        await query.message.answer(f"Связка #{callback_data.mapping_id}: <b>{status}</b> (админ {query.from_user.id})")
+        await query.message.answer(f"Mapping #{callback_data.mapping_id}: <b>{status}</b> (admin {query.from_user.id})")
 
 
 @router.message(Command("pause"))
@@ -405,7 +421,7 @@ async def cmd_pause(message: Message, ctx: BotContext) -> None:
         return
     async with ctx.sessions() as s, s.begin():
         await repo.set_flag(s, repo.PUBLISHING_PAUSED, "1", message.from_user.id)
-    await message.answer("⏸ Публикация сигналов остановлена. Сканер продолжает считать. /resume — включить.")
+    await message.answer("⏸ Signal publishing paused. Scanning continues. Use /resume to publish again.")
 
 
 @router.message(Command("resume"))
@@ -414,7 +430,7 @@ async def cmd_resume(message: Message, ctx: BotContext) -> None:
         return
     async with ctx.sessions() as s, s.begin():
         await repo.set_flag(s, repo.PUBLISHING_PAUSED, "0", message.from_user.id)
-    await message.answer("▶️ Публикация включена.")
+    await message.answer("▶️ Signal publishing resumed.")
 
 
 @router.message(Command("stats"))
@@ -424,17 +440,17 @@ async def cmd_stats(message: Message, ctx: BotContext) -> None:
     async with ctx.sessions() as s:
         st = await repo.stats(s, datetime.now(UTC) - timedelta(hours=24))
     lines = [
-        "📊 <b>Статистика</b>",
-        f"Пользователей: {st['users_total']} (активных подписок: {st['users_active']})",
-        f"Отправлено уведомлений: {st['alerts_sent_total']} всего, {st['alerts_sent_recent']} за 24 часа",
-        "<b>За 24 часа</b>",
-        f"Общих событий (2+ площадки): {st['shared_events']}",
-        f"Связки: {st['mappings']}",
-        f"Сигналы/кандидаты: {st['opportunities']}",
-        f"Уведомления: {st['outbox']}",
-        "Отклонения (топ):",
+        "📊 <b>Statistics</b>",
+        f"Users: {st['users_total']} (active subscriptions: {st['users_active']})",
+        f"Notifications sent: {st['alerts_sent_total']} total, {st['alerts_sent_recent']} in the last 24 hours",
+        "<b>Last 24 hours</b>",
+        f"Shared events (2+ venues): {st['shared_events']}",
+        f"Mappings: {st['mappings']}",
+        f"Signals/candidates: {st['opportunities']}",
+        f"Notifications: {st['outbox']}",
+        "Top rejection reasons:",
     ]
-    lines += [f"• {reason_ru(k)}: {v}" for k, v in st["rejections"].items()]
+    lines += [f"• {reason_en(k)}: {v}" for k, v in st["rejections"].items()]
     await message.answer(escape("\n".join(lines)).replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>"))
 
 
@@ -444,22 +460,22 @@ async def cmd_alias(message: Message, command: CommandObject, ctx: BotContext) -
         return
     parts = (command.args or "").split()
     if len(parts) < 3:
-        await message.answer('Формат: /alias nba "LA Lakers" nba:lal  (алиас может быть из нескольких слов)')
+        await message.answer('Usage: /alias nba "LA Lakers" nba:lal  (aliases can contain multiple words)')
         return
     league, team_id, alias = parts[0], parts[-1], " ".join(parts[1:-1]).strip("\"'")
     async with ctx.sessions() as s, s.begin():
         await repo.add_team_alias(s, league, alias, team_id, message.from_user.id)
-    await message.answer(f"Алиас добавлен: {escape(alias)} → {escape(team_id)}. Применится при следующем discovery.")
+    await message.answer(f"Alias added: {escape(alias)} → {escape(team_id)}. It will apply on the next discovery run.")
 
 
 # ---------------------------------------------------------------------------- wiring
 COMMANDS = [
-    BotCommand(command="signals", description="Активные сигналы"),
-    BotCommand(command="budget", description="Бюджет на комбинацию"),
-    BotCommand(command="filters", description="Фильтры"),
-    BotCommand(command="minprofit", description="Минимальная прибыль"),
-    BotCommand(command="menu", description="Меню"),
-    BotCommand(command="help", description="Справка"),
+    BotCommand(command="signals", description="Active signals"),
+    BotCommand(command="budget", description="Budget per combination"),
+    BotCommand(command="filters", description="Filters"),
+    BotCommand(command="minprofit", description="Minimum profit"),
+    BotCommand(command="menu", description="Menu"),
+    BotCommand(command="help", description="Help"),
 ]
 
 
