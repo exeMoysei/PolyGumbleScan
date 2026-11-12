@@ -9,7 +9,20 @@ czyli w PR #21. **PR #21 nie jest jeszcze scalony z `main`** — po merge automa
 
 Legenda: ✅ zrobione i pokryte testami · 🟡 częściowo · ⬜ niezrobione.
 
+## Zespół i odpowiedzialność za sprinty
+
+| Osoba | GitHub | Rola (karta projektu) | Odpowiada za |
+|---|---|---|---|
+| Ivan Puzaruk | exeMoysei | lider: wyjaśnianie zadań, plan i algorytmy | Sprint 2, Sprint 5, w Sprincie 8: #33 |
+| Mikhailo Ivanyshyn | Orlixx003 | programista + dokumentacja | Sprint 4, Sprint 6, w Sprincie 8: #34 |
+| Artem Vozniak | temqau | programista + testy, odpowiedzialność za błędy | Sprint 3, Sprint 7, w Sprincie 8: #32 |
+
+Sprint 1 i Sprint 8 są wspólne (zadania rozdzielone między wszystkich). Osoba odpowiedzialna za sprint jest
+przypisana (assignee) do wszystkich jego issues na GitHubie.
+
 ## Sprint 1 (29.10–12.11) — fundament
+
+Odpowiedzialni: wspólnie — #1, #15, #16 Mikhailo; #2, #17, #18 Ivan; #13, #14 Artem.
 
 | Issue | Tytuł | Stan | Uwagi |
 |---|---|---|---|
@@ -24,6 +37,8 @@ Legenda: ✅ zrobione i pokryte testami · 🟡 częściowo · ⬜ niezrobione.
 
 ## Sprint 2 (12.11–26.11) — alert arbitrażowy
 
+Odpowiedzialny: Ivan Puzaruk (exeMoysei).
+
 | Issue | Tytuł | Stan | Uwagi |
 |---|---|---|---|
 | #3 | US3: Alert arbitrażowy Polymarket (suma YES < 1) | 🟡 | Jest arbitraż **między platformami** (Polymarket ↔ Kalshi ↔ bukmacher). Brakuje arbitrażu **wewnątrz Polymarket**: suma cen YES wszystkich wyników jednego rynku < 1 — skaner wymaga dziś różnych platform |
@@ -35,6 +50,8 @@ Do zrobienia w sprincie: US3 dla rynków wielowynikowych Polymarket (pobieranie 
 
 ## Sprint 3 (26.11–10.12) — portfele
 
+Odpowiedzialny: Artem Vozniak (temqau).
+
 | Issue | Tytuł | Stan | Uwagi |
 |---|---|---|---|
 | #6 | US6: Alert: nowy portfel z dużym zakładem | ⬜ | wymaga nowego źródła danych (transakcje Polymarket: Data API / on-chain) |
@@ -42,6 +59,8 @@ Do zrobienia w sprincie: US3 dla rynków wielowynikowych Polymarket (pobieranie 
 | #8 | US8: Włączanie/wyłączanie typów alertów | 🟡 | `/filters` włącza i wyłącza sygnały, kandydatów i trasy; do rozszerzenia o nowe typy alertów (portfele, kasyna) |
 
 ## Sprint 4 (10.12–24.12) — ranking, kasyna, admin
+
+Odpowiedzialny: Mikhailo Ivanyshyn (Orlixx003).
 
 | Issue | Tytuł | Stan | Uwagi |
 |---|---|---|---|
@@ -52,6 +71,8 @@ Do zrobienia w sprincie: US3 dla rynków wielowynikowych Polymarket (pobieranie 
 
 ## Sprint 5 (24.12–07.01) — arbitraż między platformami
 
+Odpowiedzialny: Ivan Puzaruk (exeMoysei).
+
 | Issue i historia | Stan | Uwagi |
 |---|---|---|
 | #22 US13: Jako klient chcę alert, gdy to samo wydarzenie ma różne ceny na Polymarket i Kalshi | ✅ | adapter Kalshi, dopasowanie wydarzeń, trasa prediction ↔ prediction |
@@ -60,6 +81,8 @@ Do zrobienia w sprincie: US3 dla rynków wielowynikowych Polymarket (pobieranie 
 | Zadanie: pomiar części wspólnej wydarzeń na żywych danych (`polybot probe`) | ⬜ | wymaga VPS i klucza The Odds API |
 
 ## Sprint 6 (07.01–21.01) — jakość sygnału
+
+Odpowiedzialny: Mikhailo Ivanyshyn (Orlixx003).
 
 | Issue i historia | Stan | Uwagi |
 |---|---|---|
@@ -70,6 +93,8 @@ Do zrobienia w sprincie: US3 dla rynków wielowynikowych Polymarket (pobieranie 
 
 ## Sprint 7 (21.01–04.02) — wdrożenie i niezawodność
 
+Odpowiedzialny: Artem Vozniak (temqau).
+
 | Issue i historia | Stan | Uwagi |
 |---|---|---|
 | #28 US19: Jako admin chcę wdrożyć system na VPS jednym poleceniem | 🟡 | Dockerfile, Compose, `ops/deploy.sh` gotowe i sprawdzone lokalnie; brak wdrożenia na prawdziwym VPS |
@@ -78,6 +103,8 @@ Do zrobienia w sprincie: US3 dla rynków wielowynikowych Polymarket (pobieranie 
 | #31 US22: Jako admin chcę odtworzyć obliczenie z historii (replay) | ✅ | `polybot replay` bez użycia przyszłych kursów |
 
 ## Sprint 8 (04.02–18.02) — pilotaż i zamknięcie
+
+Odpowiedzialni: wspólnie — #32 Artem (pilotaż, błędy), #33 Ivan (algorytmy), #34 Mikhailo (dokumentacja).
 
 | Issue i historia | Stan | Uwagi |
 |---|---|---|
@@ -88,8 +115,8 @@ Do zrobienia w sprincie: US3 dla rynków wielowynikowych Polymarket (pobieranie 
 ## Decyzje i sprawy otwarte
 
 1. **Baza kodu.** Właściciel repozytorium zdecydował (12.11.2026), że bazą jest gałąź z PR #21 (pakiet
-   `polybot`). PR #19 i #20 (pakiet `polygumblescan`) po scaleniu PR #21 będą miały konflikty — trzeba je
-   zamknąć albo przenieść ich brakujące elementy do nowej bazy.
+   `polybot`). PR #19 i #20 (pakiet `polygumblescan`) zostały zamknięte bez scalenia; ich gałęzie nie są
+   usunięte.
 2. **Merge PR #21 do `main`.** Dopóki PR nie jest scalony, zadania oznaczone ✅ istnieją tylko w gałęzi.
 3. **Zakres US3 (#3).** Do ustalenia: czy alert „suma YES < 1” ma obejmować wszystkie rynki Polymarket
    (polityka, krypto itd.), czy tylko sport.
