@@ -88,10 +88,22 @@ class Settings(BaseSettings):
     fx_reserve_bps: Decimal = Decimal("30")
     fx_ttl_s: int = 900
 
+    # ---------------------------------------------------------------- premium (US12)
+    premium_enabled: bool = False  # opt-in: off = everyone gets the full product (no limits, no /premium)
+    premium_plans: dict[str, int] = Field(default_factory=lambda: {"30": 250, "90": 600})  # days -> Stars
+    free_daily_alerts: int = 3  # push alerts per rolling 24 h on the free plan
+    free_signals_shown: int = 1  # cards returned by /signals on the free plan
+    free_max_budget: Decimal = Decimal("250")
+    support_contact: str | None = None  # shown by /paysupport, e.g. "@team_support"
+
     # ---------------------------------------------------------------- notify
     outbox_lease_s: int = 30
     outbox_max_attempts: int = 8
     metrics_port: int = 9108
+
+    def free_alert_limit(self) -> int | None:
+        """Daily alert cap for free-plan chats, or ``None`` when premium is switched off."""
+        return self.free_daily_alerts if self.premium_enabled else None
 
     @field_validator("leagues")
     @classmethod

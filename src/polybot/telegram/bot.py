@@ -20,6 +20,7 @@ from polybot import metrics
 from polybot.adapters.base import Adapter
 from polybot.domain.enums import MappingStatus
 from polybot.services.pipeline import fx_table_from, scan_config_from
+from polybot.services.premium import plan_limits
 from polybot.services.recheck import fetch_fresh, recheck_with
 from polybot.settings import Settings
 from polybot.storage import repo
@@ -47,6 +48,7 @@ HELP = (
     "/budget 250 — установить бюджет на одну комбинацию\n"
     "/filters — что присылать (сигналы/кандидаты, маршруты, ROI)\n"
     "/minprofit 2.5 — минимальная прибыль для уведомлений (0 — сбросить)\n"
+    "/premium — Premium: alerts without the daily limit\n"
     "/stop — приостановить рассылку\n"
     "/help — справка\n\n"
     "✅ <b>Сигнал</b> — проверенные правила, известные лимиты, без убытка в описанных исключениях.\n"
@@ -144,6 +146,13 @@ async def cmd_budget(message: Message, command: CommandObject, ctx: BotContext) 
         if not (Decimal(10) <= value <= ctx.settings.max_budget):
             await message.answer(f"Бюджет должен быть от 10 до {ctx.settings.max_budget}.")
             return
+        limits = plan_limits(ctx.settings, sub, datetime.now(UTC))
+        if limits.max_budget is not None and value > limits.max_budget:
+            await message.answer(
+                f"The free plan allows a budget up to {limits.max_budget:.0f} {ctx.settings.budget_currency}. "
+                "/premium removes the cap."
+            )
+            return
         sub.budget = value.quantize(Decimal(1))
     await message.answer(
         f"Бюджет установлен: {value.quantize(Decimal(1))} {ctx.settings.budget_currency}. "
@@ -222,9 +231,13 @@ async def _send_signals(message: Message, ctx: BotContext) -> None:
     async with ctx.sessions() as s:
         sub = await s.get(Subscription, message.chat.id)
         budget = Decimal(sub.budget) if sub else ctx.settings.default_budget
-        opps = await repo.active_opportunities(s, budget, limit=5, now=datetime.now(UTC))
+        now = datetime.now(UTC)
+        limits = plan_limits(ctx.settings, sub, now)
+        opps = await repo.active_opportunities(s, budget, limit=5, now=now)
         if sub:
             opps = [o for o in opps if repo.subscription_accepts(sub, o.payload)]
+    hidden_by_plan = max(0, len(opps) - limits.signals_shown)
+    opps = opps[: limits.signals_shown]
     if not opps:
         await message.answer(
             f"Сейчас нет активных сигналов под бюджет {budget:.0f}. Сканер работает — новые придут автоматически."
@@ -236,6 +249,8 @@ async def _send_signals(message: Message, ctx: BotContext) -> None:
             reply_markup=card_keyboard(o.id, o.revision, o.payload),
             disable_web_page_preview=True,
         )
+    if hidden_by_plan:
+        await message.answer(f"🔒 {hidden_by_plan} more active signal(s) are available with /premium.")
 
 
 @router.message(Command("signals"))
@@ -321,7 +336,13 @@ async def cb_recheck(query: CallbackQuery, callback_data: OppCb, ctx: BotContext
         return
     async with ctx.sessions() as s, s.begin():
         # the user who asked gets the card directly; others are notified only on material change
-        pub = await repo.publish_draft(s, result.draft, [x for x in subs if x.chat_id != msg.chat.id], now)
+        pub = await repo.publish_draft(
+            s,
+            result.draft,
+            [x for x in subs if x.chat_id != msg.chat.id],
+            now,
+            free_daily_alerts=ctx.settings.free_alert_limit(),
+        )
         fresh = await s.get(Opportunity, pub.opportunity_id)
     assert fresh is not None
     metrics.RECHECKS.labels("updated" if pub.material else "unchanged").inc()
@@ -458,6 +479,7 @@ COMMANDS = [
     BotCommand(command="budget", description="Бюджет на комбинацию"),
     BotCommand(command="filters", description="Фильтры"),
     BotCommand(command="minprofit", description="Минимальная прибыль"),
+    BotCommand(command="premium", description="Premium"),
     BotCommand(command="menu", description="Меню"),
     BotCommand(command="help", description="Справка"),
 ]
@@ -471,4 +493,8 @@ def build_dispatcher(ctx: BotContext) -> Dispatcher:
     dp = Dispatcher()
     dp["ctx"] = ctx
     dp.include_router(router)
+    if ctx.settings.premium_enabled:
+        from polybot.telegram.premium import router as premium_router
+
+        dp.include_router(premium_router)
     return dp

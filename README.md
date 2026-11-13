@@ -32,7 +32,7 @@ Zakłady stawia użytkownik. Bot nie przechowuje środków, nie handluje i nie u
 * **services/** — ingest, scan, recheck, replay; **storage/** — PostgreSQL (źródło prawdy) i Redis
   (bieżące kursy z monotonicznym zapisem przez Lua); **telegram/** — bot aiogram 3 i worker powiadomień.
 
-Więcej: [docs/architecture.md](docs/architecture.md), plan sprintów i stan zadań — [docs/sprinty.md](docs/sprinty.md),
+Więcej: [docs/architecture.md](docs/architecture.md), subskrypcja premium — [docs/premium.md](docs/premium.md), plan sprintów i stan zadań — [docs/sprinty.md](docs/sprinty.md),
 etap 0 — [docs/stage0-audit.md](docs/stage0-audit.md), eksploatacja — [docs/runbook.md](docs/runbook.md),
 lista techniczna — [docs/TODO.md](docs/TODO.md), dostawcy danych — [docs/providers/](docs/providers/README.md).
 
@@ -77,10 +77,12 @@ uv run pytest -q
 | `/filters` | użytkownik | typy alertów (sygnały/kandydaci), trasy, minimalne ROI |
 | `/minprofit 2.5` | użytkownik | minimalny zysk alertu w walucie budżetu (`0` wyłącza próg) |
 | `/stop`, `/help` | użytkownik | wstrzymanie wysyłki, pomoc |
+| `/premium`, `/paysupport` | użytkownik | status planu, zakup Premium w Telegram Stars, pomoc w sprawie płatności (gdy `POLYBOT_PREMIUM_ENABLED=true`) |
 | `/pending` | admin | kolejka powiązań rynków do zatwierdzenia/odrzucenia |
 | `/pause`, `/resume` | admin | zatrzymanie i wznowienie publikacji sygnałów |
 | `/stats` | admin | liczba użytkowników, wysłane alerty, powiązania, odrzucenia |
 | `/alias nba "LA Lakers" nba:lal` | admin | nowy alias drużyny |
+| `/grant 123456789 30`, `/revoke 123456789` | admin | przyznanie / odebranie Premium dla czatu (zapis w `admin_actions`) |
 
 ## Wdrożenie na VPS
 
