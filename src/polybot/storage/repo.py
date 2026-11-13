@@ -20,6 +20,7 @@ from polybot.matching.events import EventCluster
 from polybot.matching.markets import MarketProposal, revalidate
 from polybot.services.payload import draft_payload
 from polybot.services.scanner import OpportunityDraft
+from polybot.storage import premium as premium_repo
 from polybot.storage.models import (
     AdminAction,
     CanonicalEvent,
@@ -477,8 +478,13 @@ async def publish_draft(
     now: datetime,
     paused: bool = False,
     reactivate_window: timedelta = timedelta(minutes=30),
+    free_daily_alerts: int | None = None,
 ) -> PublishResult:
-    """Insert/refresh an opportunity and enqueue notifications in the SAME transaction."""
+    """Insert/refresh an opportunity and enqueue notifications in the SAME transaction.
+
+    ``free_daily_alerts`` (US12): chats without an active premium get at most this many alerts per 24 h;
+    ``None`` disables the limit.
+    """
     payload = draft_payload(d)
     sig = _sig_hash(payload["signature"])
     cur = (
@@ -552,8 +558,17 @@ async def publish_draft(
                 await s.execute(select(HiddenOpportunity.chat_id).where(HiddenOpportunity.fingerprint == d.fingerprint))
             ).scalars()
         )
-        for sub in subscribers:
-            if sub.chat_id in hidden or Decimal(sub.budget) != d.budget or not subscription_accepts(sub, payload):
+        targets = [
+            sub
+            for sub in subscribers
+            if sub.chat_id not in hidden and Decimal(sub.budget) == d.budget and subscription_accepts(sub, payload)
+        ]
+        limited: set[int] = set()
+        if free_daily_alerts is not None and targets:
+            sent = await premium_repo.alerts_sent_since(s, (x.chat_id for x in targets), now - timedelta(hours=24))
+            limited = premium_repo.over_daily_limit(targets, sent, free_daily_alerts, now)
+        for sub in targets:
+            if sub.chat_id in limited:
                 continue
             stmt = insert(Outbox).values(
                 opportunity_id=opp.id,
@@ -563,6 +578,7 @@ async def publish_draft(
                 dedup_key=f"{sub.chat_id}:{d.fingerprint}:{revision}",
                 expires_at=d.expires_at,
                 next_attempt_at=now,
+                created_at=now,  # same clock as the free daily limit window
             )
             res = await s.execute(stmt.on_conflict_do_nothing(index_elements=[Outbox.dedup_key]))
             rows += int(getattr(res, "rowcount", 0) or 0)

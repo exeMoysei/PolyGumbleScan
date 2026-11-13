@@ -67,7 +67,7 @@ Odpowiedzialny: Mikhailo Ivanyshyn (Orlixx003).
 | #9 | US9: Ranking najskuteczniejszych użytkowników | ⬜ | |
 | #10 | US10: Alert o dużych zakładach graczy kasyn | ⬜ | wymaga wyboru źródła danych i sprawdzenia warunków korzystania |
 | #11 | US11: Panel admina: statystyki | ✅ | `/stats`: liczba użytkowników, aktywne subskrypcje, wysłane alerty (łącznie i 24 h), powiązania, odrzucenia |
-| #12 | US12: Subskrypcja premium | ⬜ | |
+| #12 | US12: Subskrypcja premium | ✅ | plan Free/Premium, limit alertów na dobę, płatność w Telegram Stars, `/grant` i `/revoke`; opis w [premium.md](premium.md). Domyślnie wyłączone (`POLYBOT_PREMIUM_ENABLED`) |
 
 ## Sprint 5 (24.12–07.01) — arbitraż między platformami
 

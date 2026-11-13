@@ -218,8 +218,26 @@ class Subscription(Base):
     filters: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     budget: Mapped[Decimal] = mapped_column(MONEY)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    premium_until: Mapped[datetime | None] = mapped_column(TS)  # US12: NULL or past = free plan
     created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(TS, server_default=func.now(), onupdate=func.now())
+
+
+class Payment(Base):
+    """Successful premium payments (US12). ``charge_id`` makes processing idempotent."""
+
+    __tablename__ = "payments"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    user_id: Mapped[int] = mapped_column(BigInteger)
+    provider: Mapped[str] = mapped_column(String(32))  # telegram_stars
+    charge_id: Mapped[str] = mapped_column(String(128), unique=True)
+    plan: Mapped[str] = mapped_column(String(16))
+    days: Mapped[int] = mapped_column(Integer)
+    amount: Mapped[int] = mapped_column(Integer)  # smallest unit of the currency (1 Star for XTR)
+    currency: Mapped[str] = mapped_column(String(8))
+    premium_until: Mapped[datetime] = mapped_column(TS)  # expiry after this payment
+    created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
 
 
 class Outbox(Base):

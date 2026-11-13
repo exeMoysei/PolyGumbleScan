@@ -125,7 +125,9 @@ class ScanService:
                 drafts = [d for d in res.drafts if await self._inputs_unchanged(d)]
                 async with self.sessions() as s, s.begin():
                     for d in drafts:
-                        r = await repo.publish_draft(s, d, subs, now, paused=paused)
+                        r = await repo.publish_draft(
+                            s, d, subs, now, paused=paused, free_daily_alerts=self.settings.free_alert_limit()
+                        )
                         if r.material:
                             metrics.OPPORTUNITIES.labels(d.verdict.value, d.route.value).inc()
                             metrics.SIGNAL_LATENCY.observe(
