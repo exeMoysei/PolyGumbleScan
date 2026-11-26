@@ -13,7 +13,7 @@ from polybot.domain.enums import MappingStatus
 from polybot.domain.models import FxTable, ProviderMarket, Quote
 from polybot.matching.markets import CanonicalOutcome, MarketProposal
 from polybot.services.pipeline import index_quotes
-from polybot.services.scanner import EventInfo, OpportunityDraft, ScanConfig, scan_key
+from polybot.services.scanner import EventInfo, OpportunityDraft, ScanConfig, fingerprint, scan_key
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,7 +82,14 @@ def recheck_with(
         fx,
         now,
     )
-    match = [d for d in res.drafts if d.fingerprint == payload["fingerprint"]]
+    # Older stored cards used an identity without the budget. Recheck their original legs and
+    # publish the result under the new identity so different budgets keep independent revisions.
+    match = [
+        d
+        for d in res.drafts
+        if d.fingerprint == payload["fingerprint"]
+        or fingerprint(d.canonical_market_key, d.offers) == payload["fingerprint"]
+    ]
     if match:
         return RecheckResult(match[0], ())
     return RecheckResult(None, tuple(res.rejections) or ("no_longer_profitable",))

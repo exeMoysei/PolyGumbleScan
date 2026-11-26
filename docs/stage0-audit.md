@@ -48,7 +48,7 @@ Pomiar na żywych danych z tego środowiska nie jest możliwy. Dlatego:
 
 Ostateczną decyzję potwierdzą liczby z `polybot probe` na VPS: jeśli część wspólna NBA między Polymarket
 a Kalshi okaże się pusta, pilotaż idzie trasą prediction ↔ bukmacher, a druga trasa jest pokazywana na
-przykładzie testowym (`polybot demo`, karta „СИГНАЛ · prediction ↔ prediction”).
+przykładzie testowym (`polybot demo`, karta „SIGNAL · prediction ↔ prediction”).
 
 ## Jak uzyskać liczby
 

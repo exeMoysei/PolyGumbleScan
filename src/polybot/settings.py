@@ -12,7 +12,10 @@ from polybot.domain.enums import Route
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="POLYBOT_", env_file=".env", extra="ignore", env_nested_delimiter="__")
+    # empty values ("POLYBOT_TECH_CHAT_ID=" in a freshly copied .env.example) mean "not set"
+    model_config = SettingsConfigDict(
+        env_prefix="POLYBOT_", env_file=".env", extra="ignore", env_nested_delimiter="__", env_ignore_empty=True
+    )
 
     env: str = "dev"
     log_level: str = "INFO"

@@ -24,7 +24,7 @@ from polybot.domain.solver import Plan, SolverConfig, solve
 from polybot.domain.verdict import Assessment, Thresholds, assess
 from polybot.matching.markets import MarketProposal
 
-CALC_VERSION = "2leg-exact-1"
+CALC_VERSION = "budget-aware-2"
 QuoteKey = tuple[str, str, str]  # (provider, market_external_id, outcome_external_id)
 
 
@@ -209,8 +209,12 @@ def _covers(sels: Sequence[Selection], regular: frozenset[str]) -> bool:
     return covered >= regular
 
 
-def fingerprint(key: str, offers: Sequence[Offer]) -> str:
+def fingerprint(
+    key: str, offers: Sequence[Offer], *, budget: Decimal | None = None, currency: str | None = None
+) -> str:
     refs = sorted(f"{o.venue.id}|{o.market.external_id}|{o.outcome.external_id}" for o in offers)
+    if budget is not None:
+        refs.append(f"budget:{budget.normalize():f}:{currency}")
     return hashlib.sha256("||".join([key, *refs]).encode()).hexdigest()[:20]
 
 
@@ -289,7 +293,7 @@ def scan_key(
                 expires = min([*ttl_ends, now + cfg.signal_ttl, event.start_at - cfg.prematch_buffer])
                 drafts.append(
                     OpportunityDraft(
-                        fingerprint=fingerprint(key, offers),
+                        fingerprint=fingerprint(key, offers, budget=cfg.budget, currency=cfg.budget_currency),
                         canonical_market_key=key,
                         event=event,
                         route=route,

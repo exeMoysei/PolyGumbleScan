@@ -137,11 +137,11 @@ async def test_notifier_lease_retry_and_expiry(sessions, redis) -> None:  # type
     # retry is due later; signal still valid
     assert await n2.process_once(NOW + timedelta(seconds=5)) == 1
     texts = [t for _, t in sender.sent]
-    assert sum("СИГНАЛ" in t or "КАНДИДАТ" in t for t in texts) >= 1
+    assert sum("SIGNAL" in t or "CANDIDATE" in t for t in texts) >= 1
     async with sessions() as s:
         st_ = await repo.stats(s, NOW - timedelta(days=1))
     assert st_["users_total"] == 1 and st_["users_active"] == 1
-    cards = sum("СИГНАЛ" in t or "КАНДИДАТ" in t for _, t in sender.sent)  # admin notices are not alerts
+    cards = sum("SIGNAL" in t or "CANDIDATE" in t for _, t in sender.sent)  # admin notices are not alerts
     assert cards >= 1 and st_["alerts_sent_total"] == cards and st_["alerts_sent_recent"] == cards
     # forbidden -> subscription deactivated
     async with sessions() as s, s.begin():
@@ -341,3 +341,149 @@ async def test_invalidated_mapping_is_reported_once_and_reopens_on_new_params(se
     async with sessions() as s:
         statuses = set((await s.execute(select(MarketMapping.status))).scalars())
     assert statuses & {"pending", "needs_review"}
+
+
+async def test_all_six_budgets_keep_independent_active_opportunities(sessions, redis) -> None:  # type: ignore[no-untyped-def]
+    st, store, ingest, _ = await _bootstrap(sessions, redis)
+    budgets = {Decimal(n) for n in (100, 150, 200, 250, 300, 350)}
+    async with sessions() as s, s.begin():
+        for i, budget in enumerate(sorted(budgets), start=1001):
+            await repo.ensure_subscription(s, i, i, budget)
+    await _approve_all(sessions)
+    await ingest.discover_once(NOW)
+    for a in ingest.adapters:
+        await ingest.quotes_once(a)
+    await ScanService(st, sessions, store).scan(now=NOW)
+    async with sessions() as s:
+        active = (await s.execute(select(Opportunity).where(Opportunity.status == "active"))).scalars().all()
+        assert {o.budget for o in active} == budgets
+        assert all(o.revision == 1 for o in active)
+        assert len({o.fingerprint for o in active}) == len(active)
+        queued = (await s.execute(select(Outbox).where(Outbox.kind == "signal"))).scalars().all()
+        by_id = {o.id: o for o in active}
+        for row in queued:
+            sub = await s.get(Subscription, row.chat_id)
+            assert sub is not None and sub.budget == by_id[row.opportunity_id].budget
+
+
+async def test_unchanged_prices_refresh_payload_without_new_revision(sessions, redis) -> None:  # type: ignore[no-untyped-def]
+    st, store, ingest, _ = await _bootstrap(sessions, redis)
+    await _approve_all(sessions)
+    await ingest.discover_once(NOW)
+    for a in ingest.adapters:
+        await ingest.quotes_once(a)
+    scan = ScanService(st, sessions, store)
+    drafts = await scan.scan(now=NOW)
+    draft = next(d for d in drafts if d.route.value == "prediction_prediction")
+    later = NOW + timedelta(seconds=30)
+    updated = replace(
+        draft,
+        legs=tuple(replace(leg, quote=replace(leg.quote, source_at=later, received_at=later)) for leg in draft.legs),
+        created_at=later,
+        snapshot_at=later,
+        expires_at=draft.expires_at + timedelta(seconds=30),
+    )
+    async with sessions() as s, s.begin():
+        published = await repo.publish_draft(s, updated, [], later)
+        assert not published.material and published.revision == 1
+    async with sessions() as s:
+        opp = await s.get(Opportunity, published.opportunity_id)
+        assert opp is not None and opp.snapshot_at == later
+        assert opp.payload["snapshot_at"] == later.isoformat()
+        assert opp.payload["expires_at"] == updated.expires_at.isoformat()
+        assert opp.payload["legs"][0]["quote"]["source_at"] == later.isoformat()
+
+
+async def test_outbox_respects_telegram_retry_after(sessions, redis) -> None:  # type: ignore[no-untyped-def]
+    from polybot.telegram.notifier import Notifier, SendError
+
+    class RateLimited(FakeSender):
+        async def send(self, chat_id, text, keyboard):  # type: ignore[no-untyped-def]
+            raise SendError("retry", "rate limited", retry_after=60)
+
+    async with sessions() as s, s.begin():
+        await repo.enqueue_text(s, [1001], "TEST DATA", "retry-after", NOW)
+    notifier = Notifier(sessions, RateLimited())
+    assert await notifier.process_once(NOW) == 1
+    async with sessions() as s:
+        row = (await s.execute(select(Outbox))).scalar_one()
+        assert row.next_attempt_at >= NOW + timedelta(seconds=60)
+        assert row.attempts == 1 and row.status == "pending"
+    assert await notifier.process_once(NOW + timedelta(seconds=5)) == 0
+
+
+async def test_notifier_rechecks_pause_and_subscription_before_sending(sessions, redis) -> None:  # type: ignore[no-untyped-def]
+    from polybot.telegram.notifier import Notifier
+
+    st, store, ingest, _ = await _bootstrap(sessions, redis)
+    async with sessions() as s, s.begin():
+        await repo.ensure_subscription(s, 1001, 1001, Decimal(200))
+    await _approve_all(sessions)
+    await ingest.discover_once(NOW)
+    for a in ingest.adapters:
+        await ingest.quotes_once(a)
+    await ScanService(st, sessions, store).scan(now=NOW)
+    sender = FakeSender()
+    notifier = Notifier(sessions, sender, lease_s=1)
+    async with sessions() as s, s.begin():
+        await repo.set_flag(s, repo.PUBLISHING_PAUSED, "1", ADMIN)
+    await notifier.process_once(NOW)
+    assert not [text for chat_id, text in sender.sent if chat_id == 1001]
+    async with sessions() as s, s.begin():
+        await repo.set_flag(s, repo.PUBLISHING_PAUSED, "0", ADMIN)
+        sub = await s.get(Subscription, 1001)
+        assert sub is not None
+        sub.active = False
+    await notifier.process_once(NOW + timedelta(seconds=2))
+    assert not [text for chat_id, text in sender.sent if chat_id == 1001]
+
+
+async def test_recheck_cannot_revive_a_rejected_mapping(sessions, redis) -> None:  # type: ignore[no-untyped-def]
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, patch
+
+    from aiogram.types import Chat, Message, User
+
+    from polybot.telegram.bot import BotContext, cb_recheck
+    from polybot.telegram.keyboards import OppCb
+
+    st, store, ingest, _ = await _bootstrap(sessions, redis)
+    await _approve_all(sessions)
+    await ingest.discover_once(NOW)
+    for a in ingest.adapters:
+        await ingest.quotes_once(a)
+    await ScanService(st, sessions, store).scan(now=NOW)
+    async with sessions() as s, s.begin():
+        await repo.ensure_subscription(s, 1001, 1001, Decimal(200))
+        opp = (await s.execute(select(Opportunity).where(Opportunity.verdict == "signal"))).scalars().first()
+        assert opp is not None
+        # Reject the exact market used in this card.
+        from polybot.storage.models import MarketRow
+
+        mid = opp.payload["legs"][0]["market"]["external_id"]
+        mapping = (
+            await s.execute(select(MarketMapping).join(MarketRow).where(MarketRow.external_id == mid))
+        ).scalar_one()
+        await repo.decide_mapping(s, mapping.id, False, ADMIN, "TEST DATA", NOW)
+        await repo.invalidate_by_markets(s, {mapping.canonical_market_key}, NOW)
+        data = OppCb(action="rc", opp_id=opp.id, rev=opp.revision)
+    message = Message(message_id=1, date=NOW, chat=Chat(id=1001, type="private"))
+    callback = SimpleNamespace(
+        message=message, from_user=User(id=1001, is_bot=False, first_name="Test"), answer=AsyncMock()
+    )
+    with patch("polybot.telegram.bot.fetch_fresh", new_callable=AsyncMock) as fetch:
+        await cb_recheck(callback, data, BotContext(st, sessions, ingest.adapters))  # type: ignore[arg-type]
+        fetch.assert_not_awaited()
+        assert "approval has changed" in callback.answer.call_args.args[0]
+    async with sessions() as s:
+        assert (
+            not (
+                await s.execute(
+                    select(Opportunity).where(
+                        Opportunity.fingerprint == opp.fingerprint, Opportunity.status == "active"
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )

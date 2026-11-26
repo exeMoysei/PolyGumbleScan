@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from polybot import metrics
 from polybot.storage import repo
-from polybot.storage.models import Opportunity, Outbox, Subscription
+from polybot.storage.models import HiddenOpportunity, Opportunity, Outbox, Subscription
 from polybot.telegram.cards import render_card
 from polybot.telegram.keyboards import card_keyboard
 
@@ -88,21 +88,33 @@ class Notifier:
 
     async def _deliver(self, row: Outbox, now: datetime) -> None:
         async with self.sessions() as s:
-            text, keyboard, stale = None, None, False
+            text, keyboard, stale = None, None, row.expires_at <= now
             if row.opportunity_id is None:
                 text = row.text or ""
             else:
                 opp = await s.get(Opportunity, row.opportunity_id)
                 latest = await repo.latest_revision(s, opp.fingerprint) if opp else None
+                sub = await s.get(Subscription, row.chat_id)
+                paused = await repo.get_flag(s, repo.PUBLISHING_PAUSED) == "1"
+                hidden = await s.get(HiddenOpportunity, (row.chat_id, opp.fingerprint)) if opp else None
                 if (
                     opp is None
                     or opp.status != "active"
-                    or opp.expires_at < now
+                    or opp.expires_at <= now
                     or (latest is not None and latest.revision != opp.revision)
+                    or sub is None
+                    or not sub.active
+                    or sub.budget != opp.budget
+                    or not repo.subscription_accepts(sub, opp.payload)
+                    or hidden is not None
                 ):
                     stale = True
+                elif paused:
+                    # Leave queued signals pending while publication is paused. The next claim
+                    # will retry after the lease, or discard the row once its quotes expire.
+                    return
                 else:
-                    header = None if row.kind == "signal" else f"🔁 <b>Обновление</b> (рев. {opp.revision})"
+                    header = None if row.kind == "signal" else f"🔁 <b>Update</b> (rev. {opp.revision})"
                     text = render_card(opp.payload, header=header)
                     keyboard = card_keyboard(opp.id, opp.revision, opp.payload)
         if stale or text is None:
@@ -129,9 +141,9 @@ class Notifier:
                             "telegram delivery uncertain, retrying may duplicate",
                             extra={"outbox_id": row.id, "dedup": row.dedup_key},
                         )
-                    if e.retry_after:
-                        row.attempts = max(0, row.attempts - 1)
-                    status = await repo.outbox_retry(s, row, self.owner, str(e), now, self.max_attempts)
+                    status = await repo.outbox_retry(
+                        s, row, self.owner, str(e), now, self.max_attempts, retry_after=e.retry_after
+                    )
             metrics.OUTBOX.labels(status).inc()
             return
         async with self.sessions() as s, s.begin():
