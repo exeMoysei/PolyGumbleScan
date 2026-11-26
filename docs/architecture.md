@@ -1,14 +1,15 @@
 # Architektura PolyBot
 
-Modularny monolit: jeden pakiet i jeden obraz, trzy procesy (`run-ingest`, `run-scan`, `run-bot`) skalowane
-niezależnie. PostgreSQL jest źródłem prawdy; Redis przechowuje tylko bieżące kursy (odtwarzane ze zrzutów
-platform) oraz strumień zmian dla skanera.
+Modularny monolit w trzech warstwach: `data/` (API, baza, kursy) → `logic/` (reguły bez I/O) ← `bot/` (Telegram),
+połączonych przez `services/`. Lokalnie wszystko działa w jednym procesie (`python -m polybot run`, SQLite, kursy
+w pamięci). Na serwerze trzy procesy (`run-ingest`, `run-scan`, `run-bot`) skalowane niezależnie; PostgreSQL jest
+źródłem prawdy, Redis przechowuje tylko bieżące kursy oraz strumień zmian dla skanera.
 
 ## Przepływ danych
 
 1. **Discovery** (`services/ingest.py`, co `DISCOVERY_INTERVAL_S`): każdy adapter zwraca `ProviderEvent`
    i `ProviderMarket` z rozpoznanymi zasadami (`RuleSet`). Awaria jednego źródła nie zatrzymuje pozostałych.
-2. **Dopasowanie wydarzeń** (`matching/events.py`):
+2. **Dopasowanie wydarzeń** (`logic/events.py`):
    * nazwa → stabilne ID drużyny (`TeamRegistry`): dokładny alias → kod platformy → „zawiera dokładnie jeden
      alias” → porównanie rozmyte (rapidfuzz, próg 88 i odstęp 6 od drugiego kandydata). Dopasowanie rozmyte
      nigdy nie jest uznawane za pewne i zawsze trafia do weryfikacji. Niejednoznaczne aliasy (np. „Los Angeles”
@@ -19,7 +20,7 @@ platform) oraz strumień zmian dla skanera.
      doubleheaderze — po numerze gry, w przeciwnym razie osobny klaster `ambiguous_doubleheader`;
    * role gospodarz/gość ustalane głosowaniem platform, konflikt → `role_conflict`;
    * pewność (`confidence`) spada za rozmyte nazwy, rozbieżność czasu i konflikt ról.
-3. **Dopasowanie rynków** (`matching/markets.py`): klucz `wydarzenie|typ|okres[|linia]`. Wyniki zamieniane są
+3. **Dopasowanie rynków** (`logic/markets.py`): klucz `wydarzenie|typ|okres[|linia]`. Wyniki zamieniane są
    na kanoniczne `Selection` (w których zwykłych scenariuszach wygrywają, gdzie jest zwrot, gdzie wynik zależy
    od zasad platformy). „Nie” na kontrakcie binarnym = wszystkie scenariusze poza „tak”. Brakujące zasady
    (`unknown`) i zasady domyślne → `needs_review`.
@@ -29,7 +30,7 @@ platform) oraz strumień zmian dla skanera.
 5. **Kursy**: tylko dla zatwierdzonych rynków. Zapis do Redisa jest monotoniczny (Lua): starszy lub powtórzony
    kurs jest odrzucany. Każdy zapis to zdarzenie w `pb:changes`. Historia — w `quote_snapshots`
    (ograniczony czas przechowywania).
-6. **Skan** (`services/scan.py` → `services/scanner.py`): przeliczenie kluczy, dla których przyszły zmiany
+6. **Skan** (`services/scan.py` → `logic/scanner.py`): przeliczenie kluczy, dla których przyszły zmiany
    (z debounce), pełne przeliczenie co 30 s (TTL). Filtry: status, TTL per źródło, różnica czasu między nogami,
    kurs walut, start wydarzenia. Kombinacje 2–3 nóg pokrywające wszystkie zwykłe scenariusze bez nakładania się,
    na różnych platformach; trasa musi być włączona.
@@ -37,7 +38,7 @@ platform) oraz strumień zmian dla skanera.
    zapisywane są w jednej transakcji; deduplikacja po `(czat, fingerprint, rewizja)`; nowa rewizja tylko przy
    istotnej zmianie (werdykt, rozmiary, ceny, zysk w krokach 0.5). Identyczny sygnał zamknięty z powodu braku
    danych (restart, awaria źródła) jest reaktywowany bez ponownego powiadomienia.
-8. **Powiadomienia** (`telegram/notifier.py`): pobranie z dzierżawą (`FOR UPDATE SKIP LOCKED`), backoff,
+8. **Powiadomienia** (`bot/notifier.py`): pobranie z dzierżawą (`FOR UPDATE SKIP LOCKED`), backoff,
    rezygnacja po wygaśnięciu sygnału; przy niepewnej odpowiedzi Telegrama — ponowienie z wpisem w logu
    (możliwy duplikat).
 
@@ -64,3 +65,15 @@ platform) oraz strumień zmian dla skanera.
 `quote_snapshots`, `opportunities`, `scan_rejections`, `subscriptions`, `outbox`, `hidden_opportunities`,
 `system_flags`, `team_aliases`, `admin_actions`. Zewnętrzne ID są unikalne w obrębie dostawcy, kwoty i ceny to
 `NUMERIC`, daty w UTC. Schemat tworzy migracja `migrations/versions/*_0001_initial_schema.py`.
+
+## Alerty Polymarket bez drugiej platformy (`services/wallets.py`)
+
+* **Suma YES < 1** (`logic/yes_sum.py`): dla wydarzeń `negRisk` (wyniki wykluczające się i wyczerpujące) kupno
+  tej samej liczby akcji YES każdego wyniku daje pewną wypłatę. Szukana jest liczba akcji o największym zysku
+  po przejściu po arkuszach i prowizjach, w granicach budżetu `YES_SUM_BUDGET`.
+* **Nowy portfel, duży zakład** (`logic/wallets.py`): transakcje ≥ `WHALE_MIN_USDC` z Data API v2; portfel jest
+  „nowy”, gdy cała jego historia ma ≤ `WHALE_MAX_PRIOR_TRADES` transakcji z ostatnich `WHALE_MAX_AGE_DAYS` dni.
+* **Obserwowane portfele**: świeże transakcje (≤ 1 h) portfeli z `/follow`, powyżej progu ustawionego przez
+  użytkownika.
+* Każda transakcja trafia do tabeli `seen_trades`, więc restart nie powtarza alertów. Wiadomości idą przez ten sam
+  outbox co karty arbitrażu; wysyłka sprawdza, czy typ alertu jest włączony i czy publikacja nie jest wstrzymana.

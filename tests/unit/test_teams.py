@@ -1,7 +1,7 @@
 import pytest
 
-from polybot.matching.normalize import split_matchup
-from polybot.matching.teams import ResolveMethod, TeamRegistry
+from polybot.logic.names import split_matchup
+from polybot.logic.teams import ResolveMethod, TeamRegistry
 
 REG = TeamRegistry.default()
 

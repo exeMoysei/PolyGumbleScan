@@ -2,14 +2,14 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
-from polybot.adapters.fixture import fixture_adapters
+from polybot.bot.cards import render_card, render_closed, render_rules
+from polybot.bot.keyboards import toggle_filter
+from polybot.data.fixtures import fixture_adapters
 from polybot.logging import mask
-from polybot.matching.teams import TeamRegistry
-from polybot.services.payload import draft_payload
+from polybot.logic.payload import draft_payload
+from polybot.logic.scanner import ScanConfig
+from polybot.logic.teams import TeamRegistry
 from polybot.services.pipeline import collect, run_offline
-from polybot.services.scanner import ScanConfig
-from polybot.telegram.cards import render_card, render_closed, render_rules
-from polybot.telegram.keyboards import toggle_filter
 from tests.unit.test_pipeline import fx
 
 FIX = Path(__file__).parent.parent / "fixtures"
@@ -27,24 +27,24 @@ async def test_card_contains_required_sections() -> None:
     signal = next(p for p in payloads if p["verdict"] == "signal")
     text = render_card(signal)
     for needle in (
-        "СИГНАЛ",
+        "SIGNAL",
         "Los Angeles Lakers @ Boston Celtics",
         "Polymarket",
         "Kalshi",
-        "Победа",
-        "Исключения",
-        "Мин. P&amp;L",
-        "Снимок",
-        "доступно",
+        "Win:",
+        "Exceptions",
+        "Min. P&amp;L",
+        "Snapshot",
+        "available",
         'href="https://polymarket.com/',
     ):
         assert needle in text, needle
     cand = next(p for p in payloads if p["verdict"] == "candidate")
     ct = render_card(cand)
-    assert "КАНДИДАТ" in ct and "лимит: unknown" in ct and "агрегатором" in ct
+    assert "CANDIDATE" in ct and "limit: unknown" in ct and "aggregator" in ct
     rules = render_rules(signal)
-    assert "отмена" in rules and "50/50" in rules
-    assert "Сигнал закрыт" in render_closed(signal, ["no_longer_profitable"])
+    assert "cancellation" in rules and "50/50" in rules
+    assert "Signal closed" in render_closed(signal, ["no_longer_profitable"])
 
 
 def test_filter_toggles() -> None:
@@ -63,3 +63,18 @@ def test_log_masking() -> None:
         "postgresql+asyncpg://polybot:hunter2@db/polybot"
     )
     assert "AAHdq" not in s and "abc" not in s and "hunter2" not in s
+
+
+async def test_all_fixture_cards_and_keyboards_are_english() -> None:
+    import re
+
+    from polybot.bot.handlers import ADMIN_HELP, COMMANDS, HELP
+    from polybot.bot.keyboards import card_keyboard, filters_keyboard, main_menu_keyboard, mapping_keyboard
+
+    texts = [HELP, ADMIN_HELP, *(c.description for c in COMMANDS)]
+    keyboards = [main_menu_keyboard(), filters_keyboard({}), mapping_keyboard(1, "abc123")]
+    for payload in await _payloads():
+        texts.extend((render_card(payload), render_rules(payload), render_closed(payload, ["quote_stale"])))
+        keyboards.append(card_keyboard(1, 1, payload))
+    texts.extend(button.text for keyboard in keyboards for row in keyboard.inline_keyboard for button in row)
+    assert all(not re.search(f"[{chr(0x400)}-{chr(0x4FF)}]", text) for text in texts)

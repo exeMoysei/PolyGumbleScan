@@ -7,11 +7,11 @@ from decimal import Decimal
 
 import pytest
 
-from polybot.domain import premium as rules
+from polybot.data.premium_repo import over_daily_limit
+from polybot.data.tables import Subscription
+from polybot.logic import premium as rules
 from polybot.services.premium import plan_limits, plans_from
 from polybot.settings import Settings
-from polybot.storage.models import Subscription
-from polybot.storage.premium import over_daily_limit
 
 NOW = datetime(2026, 12, 10, 12, 0, tzinfo=UTC)
 
@@ -92,7 +92,7 @@ def test_invoice_payload_roundtrip_and_garbage() -> None:
 
 
 def test_checkout_rejects_wrong_price_currency_and_plan() -> None:
-    from polybot.telegram.premium import check_checkout
+    from polybot.bot.premium import check_checkout
 
     plans = (rules.PremiumPlan("30", 30, 250),)
     ok = check_checkout("premium:30:42", "XTR", 250, plans)
@@ -111,7 +111,7 @@ def test_grant_args() -> None:
 
 
 def test_premium_keyboard_and_callback_fit_telegram_limits() -> None:
-    from polybot.telegram.premium import PremCb, premium_keyboard
+    from polybot.bot.premium import PremCb, premium_keyboard
 
     plans = plans_from(_settings())
     kb = premium_keyboard(plans)
@@ -122,8 +122,8 @@ def test_premium_keyboard_and_callback_fit_telegram_limits() -> None:
 
 
 def test_status_text_shows_expiry_and_limits() -> None:
-    from polybot.telegram.bot import BotContext
-    from polybot.telegram.premium import status_text
+    from polybot.bot.handlers import BotContext
+    from polybot.bot.premium import status_text
 
     ctx = BotContext(_settings(free_daily_alerts=3), sessions=None)  # type: ignore[arg-type]
     free = status_text(None, ctx, NOW)
@@ -133,7 +133,7 @@ def test_status_text_shows_expiry_and_limits() -> None:
 
 
 def test_premium_router_handlers() -> None:
-    from polybot.telegram.premium import router
+    from polybot.bot.premium import router
 
     assert len(router.message.handlers) >= 5  # /premium, payment, /paysupport, /grant, /revoke
     assert len(router.callback_query.handlers) == 1 and len(router.pre_checkout_query.handlers) == 1

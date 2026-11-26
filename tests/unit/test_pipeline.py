@@ -5,12 +5,12 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
-from polybot.adapters.fixture import fixture_adapters
-from polybot.domain.enums import Route, Verdict
-from polybot.domain.models import FxRate, FxTable
-from polybot.matching.teams import TeamRegistry
-from polybot.services.pipeline import collect, index_quotes, run_offline
-from polybot.services.scanner import ScanConfig
+from polybot.data.fixtures import fixture_adapters
+from polybot.logic.enums import Route, Verdict
+from polybot.logic.models import FxRate, FxTable
+from polybot.logic.scanner import ScanConfig, index_quotes
+from polybot.logic.teams import TeamRegistry
+from polybot.services.pipeline import collect, run_offline
 
 FIX = Path(__file__).parent.parent / "fixtures"
 NOW = datetime(2026, 1, 15, 23, 0, tzinfo=UTC)  # 90 minutes before tip-off
@@ -137,3 +137,26 @@ async def test_quote_polling_survives_cache_outage() -> None:
     svc.catalogs["polymarket"] = await adapters[0].discover()
     svc.approved = {("polymarket", m.external_id) for m in svc.catalogs["polymarket"].markets}
     assert await svc.quotes_once(adapters[0]) == 0  # logged and counted, loop keeps running
+
+
+async def test_opportunity_identity_is_independent_for_each_budget() -> None:
+    _, first = await run(ScanConfig(budget=Decimal(100)))
+    _, equivalent = await run(ScanConfig(budget=Decimal("100.00")))
+    _, other = await run(ScanConfig(budget=Decimal(200)))
+    assert first.drafts and other.drafts
+    assert {d.fingerprint for d in first.drafts} == {d.fingerprint for d in equivalent.drafts}
+    assert not {d.fingerprint for d in first.drafts} & {d.fingerprint for d in other.drafts}
+
+
+async def test_old_opportunity_identity_can_be_rechecked() -> None:
+    from polybot.logic.payload import draft_payload
+    from polybot.logic.scanner import fingerprint
+    from polybot.services.recheck import original_quotes, recheck_with
+
+    _, scan = await run()
+    draft = scan.drafts[0]
+    payload = draft_payload(draft)
+    payload["fingerprint"] = fingerprint(draft.canonical_market_key, draft.offers)
+    result = recheck_with(payload, original_quotes(payload), ScanConfig(budget=Decimal(200)), fx(), NOW)
+    assert result.draft is not None
+    assert result.draft.fingerprint == draft.fingerprint

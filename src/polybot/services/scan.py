@@ -14,16 +14,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from polybot import metrics
-from polybot.codec import dec_market, dec_selection, dec_space
-from polybot.domain.enums import MappingStatus
-from polybot.domain.scenarios import ScenarioSpace
-from polybot.matching.markets import CanonicalOutcome, MarketProposal
-from polybot.services.pipeline import fx_table_from, index_quotes, scan_config_from
-from polybot.services.scanner import EventInfo, OpportunityDraft, scan_key
+from polybot.data import repo
+from polybot.data.quote_cache import QuoteStore, RedisQuoteStore
+from polybot.data.tables import CanonicalEvent, MarketMapping, MarketRow
+from polybot.logic.codec import dec_market, dec_selection, dec_space
+from polybot.logic.enums import MappingStatus
+from polybot.logic.markets import CanonicalOutcome, MarketProposal
+from polybot.logic.scanner import EventInfo, OpportunityDraft, index_quotes, scan_key
+from polybot.logic.scenarios import ScenarioSpace
+from polybot.services.pipeline import fx_table_from, scan_config_from
 from polybot.settings import Settings
-from polybot.storage import repo
-from polybot.storage.models import CanonicalEvent, MarketMapping, MarketRow
-from polybot.storage.quotes import QuoteStore, RedisQuoteStore
 
 log = logging.getLogger(__name__)
 
@@ -79,8 +79,8 @@ async def load_bundles(s: AsyncSession, keys: set[str] | None = None) -> dict[st
         if b is None:
             home, away = ev.home_team_id, ev.away_team_id
             labels = doc["space"].get("labels", {})
-            hn = labels.get(f"win:{home}", home).removeprefix("Победа ")
-            an = labels.get(f"win:{away}", away).removeprefix("Победа ")
+            hn = labels.get(f"win:{home}", home).removeprefix("Win: ")
+            an = labels.get(f"win:{away}", away).removeprefix("Win: ")
             info = EventInfo(ev.id, ev.league, ev.title, ev.start_at, hn, an)
             b = bundles[mp.canonical_market_key] = KeyBundle(mp.canonical_market_key, space, info)
         b.proposals.append(prop)
@@ -94,7 +94,7 @@ class ScanService:
         sessions: async_sessionmaker[AsyncSession],
         store: QuoteStore,
         full_scan_interval_s: int = 30,
-        max_budgets: int = 5,
+        max_budgets: int | None = None,
     ) -> None:
         self.settings = settings
         self.sessions = sessions

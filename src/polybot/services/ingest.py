@@ -10,15 +10,15 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from polybot import metrics
-from polybot.adapters.base import Adapter, Catalog
-from polybot.domain.enums import MappingStatus
-from polybot.domain.models import Quote
-from polybot.matching.catalog import MatchReport, match_catalog
+from polybot.data import repo
+from polybot.data.quote_cache import QuoteStore
+from polybot.data.sources import Adapter, Catalog
+from polybot.logic.catalog import MatchReport, match_catalog
+from polybot.logic.enums import MappingStatus
+from polybot.logic.models import Quote
 from polybot.services.pipeline import event_info
 from polybot.services.runtime import SOURCE_KIND, registry_with_aliases
 from polybot.settings import Settings
-from polybot.storage import repo
-from polybot.storage.quotes import QuoteStore
 
 log = logging.getLogger(__name__)
 
@@ -105,14 +105,14 @@ class IngestService:
         targets = [self.settings.tech_chat_id] if self.settings.tech_chat_id else list(self.settings.admin_ids)
         if not targets:
             return
-        lines = [f"🧩 Связки к проверке: {len(changes)}"]
+        lines = [f"🧩 Mappings to review: {len(changes)}"]
         for c in changes[:15]:
-            prev = f" (было {c.previous.value})" if c.previous else ""
+            prev = f" (previously {c.previous.value})" if c.previous else ""
             lines.append(
                 f"• {c.provider} {c.market_external_id}: {c.status.value}{prev}"
                 + (f" — {', '.join(c.reasons[:3])}" if c.reasons else "")
             )
-        lines.append("Открыть очередь: /pending")
+        lines.append("Open the review queue: /pending")
         await repo.enqueue_text(
             s, targets, "\n".join(lines), dedup=f"map:{now:%Y%m%d%H%M}:{len(changes)}", now=now, kind="admin"
         )

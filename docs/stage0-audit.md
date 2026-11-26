@@ -8,31 +8,34 @@ Na starcie gałąź `main` w `exeMoysei/PolyGumbleScan` zawierała tylko `README
 bez kodu, `AGENTS.md`, CI i historii zmian. Później (10.11.2026) pojawiły się PR #19 i #20 z własną strukturą
 pakietu `polygumblescan` — nie są scalone z `main`; patrz [sprinty.md](sprinty.md).
 
-## Kontrola dostępów ze środowiska deweloperskiego
+## Kontrola dostępów
+
+04.11.2026 API platform były zablokowane przez ograniczoną sieć środowiska deweloperskiego (403 z proxy — nie
+zależy od kraju). Kontrakty adapterów porównano wtedy z dokumentacją, a potok sprawdzono na danych testowych.
+
+26.11.2026 sieć środowiska otwarto dla publicznych API i wykonano pomiar na żywych danych:
 
 | Host | Wynik |
 |---|---|
-| gamma-api.polymarket.com, clob.polymarket.com | ❌ 403 z proxy środowiska (zablokowane polityką sieciową) |
-| api.elections.kalshi.com | ❌ 403 z proxy środowiska |
-| api.the-odds-api.com | ❌ 403 z proxy środowiska |
-| pypi.org | ✅ |
+| gamma-api.polymarket.com, clob.polymarket.com | ✅ bez klucza |
+| data-api.polymarket.com (`/v2/…`) | ✅ bez klucza; v1 i `lb-api.polymarket.com` wyłączone (410) |
+| api.elections.kalshi.com | ✅ bez klucza |
+| api.the-odds-api.com | ⏳ wymaga klucza |
+| polygon-rpc.com | ❌ wymaga klucza API (do wyboru inny publiczny węzeł RPC) |
 
-Pomiar na żywych danych z tego środowiska nie jest możliwy. Dlatego:
+Wynik pomiaru (ligi NBA, NHL, EPL): 66 wydarzeń, **48 wspólnych dla Polymarket i Kalshi**, 0 nierozpoznanych nazw,
+473 powiązania rynków do zatwierdzenia, 946 kursów. Okazji arbitrażowych Polymarket ↔ Kalshi w chwili pomiaru nie
+było (112 kombinacji bez przewagi po najlepszych cenach). Suma YES < 1: 93 wydarzenia, 1 okazja.
 
-* kontrakty adapterów zostały porównane z oficjalną dokumentacją (zob. `docs/providers/*.md`), w tym aktualny
-  format Kalshi `orderbook_fp` (same bidy, ceny jako napisy w dolarach) oraz model prowizji Polymarket
-  `fd = {r, e, to}`;
-* dodano polecenie `polybot probe`, które na VPS mierzy dostęp, opóźnienie, liczbę wydarzeń/rynków/kursów,
-  odsetek kursów z głębokością i z potwierdzonymi limitami, limity API oraz **liczbę wspólnych wydarzeń**
-  dla zestawów platform w okresie obserwacji (`--samples N --interval S`) i zapisuje JSON do tego raportu;
-* cały potok sprawdzono na danych testowych w formacie odpowiedzi platform (oznaczone `TEST DATA`).
+Pomiar ujawnił i naprawiono: prowizje Polymarket w `feeSchedule`, czas `timestamp` arkusza (ostatnia zmiana, nie
+czas odpowiedzi), wolne pobieranie arkuszy Kalshi (teraz paczkami), nowe sformułowania zasad, drużyny EPL 2026/27.
 
 ## Tabela źródeł
 
 | Źródło | Typ | Cena do obliczeń | Głębokość | Limity | Świeżość | Linki | Status |
 |---|---|---|---|---|---|---|---|
-| Polymarket | prediction | drabinka ask z CLOB | tak | tak (wolumen poziomów) | z platformy | tak | adapter gotowy, probe na VPS |
-| Kalshi | prediction | ask = 1 − bid strony przeciwnej | tak | tak | z platformy (czas odbioru) | tak | adapter gotowy, probe na VPS |
+| Polymarket | prediction | drabinka ask z CLOB | tak | tak (wolumen poziomów) | z platformy | tak | ✅ działa na żywo |
+| Kalshi | prediction | ask = 1 − bid strony przeciwnej | tak | tak | z platformy (czas odbioru) | tak | ✅ działa na żywo |
 | The Odds API | agregator bukmacherów | kurs dziesiętny | nie | unknown | tylko agregator | częściowo (`includeLinks`) | adapter gotowy, potrzebny klucz |
 
 ## Wybór pierwszego rynku
@@ -48,7 +51,7 @@ Pomiar na żywych danych z tego środowiska nie jest możliwy. Dlatego:
 
 Ostateczną decyzję potwierdzą liczby z `polybot probe` na VPS: jeśli część wspólna NBA między Polymarket
 a Kalshi okaże się pusta, pilotaż idzie trasą prediction ↔ bukmacher, a druga trasa jest pokazywana na
-przykładzie testowym (`polybot demo`, karta „СИГНАЛ · prediction ↔ prediction”).
+przykładzie testowym (`polybot demo`, karta „SIGNAL · prediction ↔ prediction”).
 
 ## Jak uzyskać liczby
 

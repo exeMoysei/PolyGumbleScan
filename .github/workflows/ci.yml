@@ -41,12 +41,18 @@ jobs:
         run: uv run ruff check src tests migrations && uv run ruff format --check src tests migrations
       - name: mypy (strict)
         run: uv run mypy
-      - name: tests (unit + integration on fixtures, no secrets)
+      - name: tests on PostgreSQL + Redis (unit + integration on fixtures, no secrets)
         run: uv run pytest -q
+      - name: integration tests on SQLite (the local default)
+        run: env -u POLYBOT_TEST_DATABASE_URL -u POLYBOT_TEST_REDIS_URL uv run pytest -q tests/integration
+      - name: requirements.txt matches uv.lock
+        run: |
+          uv export --format requirements-txt --no-dev --no-hashes --frozen | grep -v '^ *#' | sed '/^$/d' > /tmp/req.txt
+          grep -v '^#' requirements.txt | diff - /tmp/req.txt
       - name: migrations are in sync with models
         run: POLYBOT_DATABASE_URL=$POLYBOT_TEST_DATABASE_URL uv run alembic upgrade head && POLYBOT_DATABASE_URL=$POLYBOT_TEST_DATABASE_URL uv run alembic check
       - name: offline demo smoke
-        run: uv run polybot demo > demo.txt && grep -q "СИГНАЛ" demo.txt
+        run: uv run polybot demo > demo.txt && grep -q "SIGNAL" demo.txt
 
   image:
     needs: test

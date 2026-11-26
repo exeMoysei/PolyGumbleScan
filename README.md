@@ -1,117 +1,111 @@
 # PolyBot (repozytorium PolyGumbleScan)
 
-PolyBot zbiera rynki z prediction markets (Polymarket, Kalshi) oraz kursy bukmacherów (przez The Odds API),
-dopasowuje **to samo wydarzenie** na różnych platformach i szuka kombinacji zakładów, w których wypłata po
-odliczeniu wszystkich kosztów pokrywa wkład we wszystkich zwykłych wynikach. Odwołanie meczu, przełożenie,
-remis i zwroty są liczone jako osobne scenariusze. Wynik trafia do Telegrama jako karta ze stawkami,
-wynikiem (P&L) dla każdego scenariusza, wiekiem cen i linkami.
+Bot na Telegramie, który śledzi prediction markets (Polymarket, Kalshi) i kursy bukmacherów (The Odds API) i wysyła:
 
-Zakłady stawia użytkownik. Bot nie przechowuje środków, nie handluje i nie używa kluczy API do handlu.
+* **arbitraż między platformami** — kombinacje zakładów na **to samo wydarzenie**, w których wypłata po wszystkich
+  kosztach pokrywa wkład w każdym zwykłym wyniku (odwołanie, przełożenie i remis liczone osobno);
+* **suma YES < 1 na Polymarket** — wydarzenie z wieloma wynikami, w którym zakup YES na każdy wynik kosztuje mniej
+  niż wypłata 1 USDC;
+* **nowe portfele z dużym zakładem** i **transakcje obserwowanych portfeli** (Polymarket);
+* **ranking najlepszych graczy** (`/top`).
 
-> Interfejs bota w Telegramie (komunikaty, przyciski) jest obecnie po rosyjsku. Dokumentacja jest po polsku.
+Zakłady stawia użytkownik. Bot nie przechowuje środków i nie handluje. Komunikaty bota i kod są po angielsku,
+dokumentacja — po polsku.
 
-## Jak to działa
+## Szybki start (lokalnie, bez Dockera)
 
-```
- adaptery ──► ingest ──► dopasowanie ──► akceptacja admina ──► scan ──► okazje + outbox ──► bot
- (Polymarket,   (katalog,   (drużyny → ID,   (Telegram /pending,   (solver    (jedna transakcja,  (karty,
-  Kalshi,        kursy       wydarzenia po    wersja zasad)         Decimal,   deduplikacja po      ponowne
-  Odds API)      → Redis)    czasie, rynki)                         scenariusze) czacie i rewizji)  sprawdzenie)
-```
-
-* **domain/** — czyste obliczenia: scenariusze (remis, dogrywka, total z pushem, odwołanie, przełożenie),
-  modele prowizji (Polymarket `C·p·r·(p(1-p))^e`, Kalshi `ceil(0.07·C·P·(1-P))`), przejście po arkuszu zleceń,
-  kurs walut z rezerwą, dokładny solver z ograniczonym przeszukiwaniem, werdykty „sygnał / kandydat / odrzucone”.
-  Wyłącznie `Decimal`.
-* **matching/** — rejestr drużyn NBA/NFL/NHL/MLB/EPL z aliasami wszystkich platform (także w stylu Kalshi
-  „Los Angeles L”), grupowanie wydarzeń po parze drużyn i czasie (dokładny czas ±3 h, wydarzenia „tylko data”
-  dołączane do jedynego meczu danego dnia, doubleheadery — po numerze gry albo do ręcznej weryfikacji),
-  kanoniczny klucz rynku `wydarzenie|typ|okres|linia`, kontrola zasad, cofnięcie akceptacji przy zmianach.
-* **adapters/** — osobny pakiet na dostawcę + wspólny klient HTTP (limit współbieżności, backoff z jitterem,
-  Retry-After, maskowanie kluczy) i stan arkusza zleceń dla WebSocketu.
-* **services/** — ingest, scan, recheck, replay; **storage/** — PostgreSQL (źródło prawdy) i Redis
-  (bieżące kursy z monotonicznym zapisem przez Lua); **telegram/** — bot aiogram 3 i worker powiadomień.
-
-Więcej: [docs/architecture.md](docs/architecture.md), subskrypcja premium — [docs/premium.md](docs/premium.md), plan sprintów i stan zadań — [docs/sprinty.md](docs/sprinty.md),
-etap 0 — [docs/stage0-audit.md](docs/stage0-audit.md), eksploatacja — [docs/runbook.md](docs/runbook.md),
-lista techniczna — [docs/TODO.md](docs/TODO.md), dostawcy danych — [docs/providers/](docs/providers/README.md).
-
-## Szybki start (lokalnie, bez sieci i sekretów)
+Wymagany Python 3.12 lub 3.13.
 
 ```bash
-uv sync
-uv run polybot demo            # pełny potok na danych testowych: parsowanie → dopasowanie → obliczenia → karty
-uv run pytest -q               # testy jednostkowe (integracyjne są pomijane bez bazy)
-uv run ruff check src tests && uv run mypy
+python -m venv venv
+source venv/bin/activate            # Windows: venv\Scripts\activate
+pip install -r requirements.txt     # programiści: pip install -r requirements-dev.txt
+cp .env.example .env                # uzupełnij POLYBOT_TELEGRAM_BOT_TOKEN i POLYBOT_ADMIN_IDS
+python -m polybot run
 ```
 
-Testy integracyjne (PostgreSQL + Redis, bez sekretów):
+`python -m polybot run` uruchamia wszystko w jednym procesie: pobieranie rynków, skaner, alerty portfeli, bota
+i wysyłkę powiadomień. Dane trafiają do jednego pliku SQLite (`polybot.db`) — PostgreSQL, Redis ani Docker nie są
+potrzebne. Bez tokenu bot zbiera i liczy dane, ale nic nie wysyła.
 
-```bash
-export POLYBOT_TEST_DATABASE_URL=postgresql+asyncpg://polybot:polybot@localhost:5432/polybot_test
-export POLYBOT_TEST_REDIS_URL=redis://localhost:6379/1
-uv run pytest -q
+W Telegramie: `/start` → admin zatwierdza powiązania rynków w `/pending` → alerty przychodzą same, `/signals`
+pokazuje aktywne okazje. To jest ścieżka MVP, opisana krok po kroku w [docs/podzial-pracy.md](docs/podzial-pracy.md).
+
+Bez internetu i bez tokenu: `python -m polybot demo` — cały potok na danych testowych.
+
+## Struktura projektu
+
 ```
+src/polybot/
+├── data/       1. DANE      — skąd dane przychodzą i gdzie leżą: API platform, baza, pamięć podręczna kursów
+├── logic/      2. LOGIKA    — reguły biznesowe bez sieci i bazy: arbitraż, dopasowanie wydarzeń, alerty
+├── bot/        3. INTERFEJS — Telegram: komendy, karty, przyciski, wysyłka
+├── services/   procesy łączące warstwy: pobieranie → logika → zapis → powiadomienie
+├── cli.py      polecenia (python -m polybot …)
+└── settings.py ustawienia z .env
+tests/
+├── unit/         szybkie testy bez bazy
+├── integration/  cała ścieżka na bazie (domyślnie SQLite)
+└── fixtures/     dane testowe w formacie odpowiedzi API (oznaczone TEST DATA)
+docs/             dokumentacja (po polsku)
+migrations/       migracje Alembic (PostgreSQL)
+ops/              skrypty serwera: wdrożenie, kopie zapasowe, monitoring
+```
+
+Granice warstw sprawdza test `tests/unit/test_layers.py`: `logic/` nie importuje bazy, HTTP ani Telegrama,
+a `data/` nie importuje `services/` ani `bot/`. Kto odpowiada za który moduł — [docs/podzial-pracy.md](docs/podzial-pracy.md).
+
+## Polecenia bota
+
+| Polecenie | Opis |
+|---|---|
+| `/start`, `/menu` | subskrypcja i menu z przyciskami |
+| `/signals` | aktywne okazje arbitrażowe dla Twojego budżetu |
+| `/budget 250` | budżet na jedną kombinację |
+| `/filters` | typy alertów (arbitraż, suma YES, nowe portfele, obserwowane portfele), sygnały/kandydaci, trasy, ROI |
+| `/minprofit 2.5` | minimalny zysk alertu arbitrażowego |
+| `/top [day\|week\|month\|all] [volume]` | ranking graczy Polymarket |
+| `/follow 0x… [min_usdc] [nazwa]`, `/following`, `/unfollow 0x…` | obserwowane portfele |
+| `/premium` | plan Premium (alerty bez dziennego limitu) |
+| `/pending`, `/pause`, `/resume`, `/stats`, `/alias`, `/grant`, `/revoke` | tylko admin |
 
 ## Polecenia CLI
 
 | Polecenie | Przeznaczenie |
 |---|---|
-| `polybot migrate` | zastosowanie migracji Alembic |
-| `polybot run-ingest` | pobieranie katalogu, dopasowanie, odpytywanie kursów |
-| `polybot run-scan` | przeliczanie po zmianach kursów/zasad i po wygaśnięciu TTL |
-| `polybot run-bot` | bot Telegram (long polling) + worker powiadomień |
-| `polybot probe [--samples N --interval S --out f.json]` | etap 0: dostęp, wolumen, głębokość/limity, część wspólna wydarzeń |
-| `polybot replay --at 2026-01-15T23:00:00+00:00` | przeliczenie z historycznego zrzutu z bazy, bez przyszłych kursów |
-| `polybot demo` / `polybot replay --fixtures tests/fixtures` | przebieg offline na danych testowych |
-| `polybot mappings list\|approve ID\|reject ID` | kolejka powiązań rynków z konsoli (admin) |
-| `polybot healthcheck` | kontrola bazy i Redisa (używane przez Dockera) |
+| `python -m polybot run` | wszystko w jednym procesie (najprostszy start) |
+| `python -m polybot migrate` | tabele w SQLite albo migracje Alembic w PostgreSQL |
+| `python -m polybot run-ingest` / `run-scan` / `run-bot` | osobne procesy (serwer, Docker Compose) |
+| `python -m polybot demo` | potok offline na danych testowych |
+| `python -m polybot probe` | pomiar źródeł na żywych danych (dostęp, wolumen, wspólne wydarzenia) |
+| `python -m polybot replay --at …` | przeliczenie z historii bez przyszłych kursów |
+| `python -m polybot mappings list\|approve ID\|reject ID` | powiązania rynków z konsoli |
 
-## Polecenia bota
+## Testy i jakość
 
-| Polecenie | Dla kogo | Opis |
-|---|---|---|
-| `/start`, `/menu` | użytkownik | subskrypcja i menu z przyciskami (Sygnały, Budżet, Filtry, Pomoc) |
-| `/signals` | użytkownik | aktywne sygnały dla ustawionego budżetu |
-| `/budget 250` | użytkownik | budżet na jedną kombinację |
-| `/filters` | użytkownik | typy alertów (sygnały/kandydaci), trasy, minimalne ROI |
-| `/minprofit 2.5` | użytkownik | minimalny zysk alertu w walucie budżetu (`0` wyłącza próg) |
-| `/stop`, `/help` | użytkownik | wstrzymanie wysyłki, pomoc |
-| `/premium`, `/paysupport` | użytkownik | status planu, zakup Premium w Telegram Stars, pomoc w sprawie płatności (gdy `POLYBOT_PREMIUM_ENABLED=true`) |
-| `/pending` | admin | kolejka powiązań rynków do zatwierdzenia/odrzucenia |
-| `/pause`, `/resume` | admin | zatrzymanie i wznowienie publikacji sygnałów |
-| `/stats` | admin | liczba użytkowników, wysłane alerty, powiązania, odrzucenia |
-| `/alias nba "LA Lakers" nba:lal` | admin | nowy alias drużyny |
-| `/grant 123456789 30`, `/revoke 123456789` | admin | przyznanie / odebranie Premium dla czatu (zapis w `admin_actions`) |
+```bash
+pip install -r requirements-dev.txt
+pytest -q                           # testy jednostkowe + integracyjne na SQLite
+ruff check src tests && mypy        # styl i typy (mypy strict)
+```
 
-## Wdrożenie na VPS
+Na PostgreSQL + Redis (jak w CI): ustaw `POLYBOT_TEST_DATABASE_URL` i `POLYBOT_TEST_REDIS_URL`. Zespół może też
+używać `uv` (`uv sync`, `uv run pytest`) — `requirements*.txt` są generowane z `uv.lock`.
 
-1. Zainstalować Docker + Compose, sklonować repozytorium, `cp .env.example .env` i uzupełnić
-   (`POSTGRES_PASSWORD`, `POLYBOT_TELEGRAM_BOT_TOKEN`, `POLYBOT_ADMIN_IDS`, `POLYBOT_ODDS_API_KEY`).
-2. Pierwszy pomiar etapu 0 na żywych danych:
-   `docker compose run --rm ingest probe --samples 6 --interval 600 --out /tmp/probe.json`.
-3. `ops/deploy.sh <sha>` — pobranie obrazu `ghcr.io/exemoysei/polygumblescan:<sha>`, migracje (log w `var/log/`),
-   uruchomienie `ingest`, `scan`, `bot`, `backup`, kontrola stanu. Na zewnątrz nic nie jest wystawione: metryki
-   tylko na `127.0.0.1:9101-9103`, PostgreSQL i Redis w prywatnej sieci Compose.
-4. W Telegramie admin otwiera `/pending` i zatwierdza powiązania. Sygnały pojawiają się tylko dla zatwierdzonych.
+## Serwer (produkcja)
 
-Test na środowisku staging bez żywych API: `POLYBOT_FIXTURES_DIR=/app/tests/fixtures` — bot przetwarza
-wydarzenia testowe z bieżącym zegarem, co pozwala sprawdzić całą ścieżkę aż do wiadomości w Telegramie.
+Docker Compose z PostgreSQL i Redis: `cp .env.example .env`, `ops/deploy.sh <sha>`. Szczegóły, kopie zapasowe
+i monitoring: [docs/runbook.md](docs/runbook.md).
 
-## Najważniejsze ustawienia (`POLYBOT_*`)
+## Dokumentacja
 
-`LEAGUES` (domyślnie `["nba"]`), `DEFAULT_BUDGET`, `MIN_PROFIT`, `MIN_ROI`, `ROUTES`
-(`prediction_prediction`, `prediction_sportsbook`; `sportsbook_sportsbook` wyłączone), `QUOTE_TTL_S`,
-`MAX_QUOTE_SKEW_S`, `FX_STATIC` + `FX_RESERVE_BPS` (USDC nie jest traktowany jak USD bez rezerwy),
-`SPORTSBOOK_MAX_STAKE` (znane limity u bukmacherów), `AUTO_APPROVE_STRONG_MATCHES` (wyłączone: w MVP wszystkie
-powiązania zatwierdza admin). Pełna lista — `src/polybot/settings.py`.
-
-## Ograniczenia MVP
-
-* Tylko prematch, 2–3 nogi, rynki „zwycięzca”, 1X2 oraz total z linią połówkową/całkowitą.
-* Kursy z The Odds API zawsze dają **kandydatów**: limit jest nieznany, świeżość potwierdza tylko agregator,
-  zasady bukmachera są przyjęte domyślnie.
-* Zasady platform są rozpoznawane po słowach kluczowych; wszystko, czego nie rozpoznano, zostaje `unknown`
-  i trafia do ręcznej weryfikacji.
-* Arbitraż wewnątrz jednej platformy (suma cen YES < 1 na Polymarket) nie jest jeszcze zaimplementowany.
-* Obserwacja bez realnych transakcji sprawdza skaner, ale nie potwierdza rzeczywistej rentowności.
+| Plik | Zawartość |
+|---|---|
+| [docs/podzial-pracy.md](docs/podzial-pracy.md) | warstwy, kto odpowiada za który moduł, ścieżka MVP |
+| [docs/sprinty.md](docs/sprinty.md) | 16 sprintów, zadania i ich stan |
+| [docs/architecture.md](docs/architecture.md) | jak działa dopasowanie wydarzeń i solver |
+| [docs/zrodla-danych.md](docs/zrodla-danych.md) | API: Polymarket, Kalshi, The Odds API, kasyna |
+| [docs/premium.md](docs/premium.md) | subskrypcja Premium |
+| [docs/runbook.md](docs/runbook.md) | serwer, kopie zapasowe, monitoring |
+| [docs/stage0-audit.md](docs/stage0-audit.md) | audyt startowy i wybór rynku |
+| [docs/TODO.md](docs/TODO.md) | lista techniczna wg etapów specyfikacji |

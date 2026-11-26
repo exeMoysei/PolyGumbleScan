@@ -6,14 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from polybot.adapters.fixture import fixture_adapters
-from polybot.adapters.rules_parser import parse_rules
-from polybot.domain.enums import MappingStatus, MarketType, Period, SettlementPolicy
-from polybot.domain.models import ProviderEvent, ProviderMarket, ProviderOutcome, StartPrecision
-from polybot.matching.catalog import match_catalog
-from polybot.matching.events import cluster_events, match, resolve_event
-from polybot.matching.markets import compatibility_issues, map_market, revalidate
-from polybot.matching.teams import TeamRegistry
+from polybot.data.fixtures import fixture_adapters
+from polybot.data.rules import parse_rules
+from polybot.logic.catalog import match_catalog
+from polybot.logic.enums import MappingStatus, MarketType, Period, SettlementPolicy
+from polybot.logic.events import cluster_events, match, resolve_event
+from polybot.logic.markets import compatibility_issues, map_market, revalidate
+from polybot.logic.models import ProviderEvent, ProviderMarket, ProviderOutcome, StartPrecision
+from polybot.logic.teams import TeamRegistry
 
 FIX = Path(__file__).parent.parent / "fixtures"
 REG = TeamRegistry.default()
@@ -274,3 +274,20 @@ def test_cluster_ids_are_stable_regardless_of_input_order() -> None:
     r1 = cluster_events([resolve_event(e, REG) for e in a])  # type: ignore[misc]
     r2 = cluster_events([resolve_event(e, REG) for e in reversed(a)])  # type: ignore[misc]
     assert [c.id for c in r1] == [c.id for c in r2]
+
+
+def test_rules_parser_on_current_live_wordings() -> None:
+    """Rule texts as published in Nov 2026 (paraphrased TEST DATA)."""
+    poly = (
+        'If the Pelicans win, the market will resolve to "Pelicans". If the game is canceled, does not start by '
+        "Sunday, November 29, 2026, 11:59 PM ET, or is abandoned with no official result by that time, this market "
+        "will resolve 50-50. The result includes overtime."
+    )
+    r = parse_rules("polymarket", poly)
+    assert (r.on_cancel, r.on_postpone) == (SettlementPolicy.HALF, SettlementPolicy.HALF)
+    kalshi = (
+        "If the game is cancelled or rescheduled to over 48 hours away, the market will resolve to a fair price "
+        "in accordance with the rules."
+    )
+    k = parse_rules("kalshi", kalshi)
+    assert (k.on_cancel, k.on_postpone) == (SettlementPolicy.UNKNOWN, SettlementPolicy.UNKNOWN)  # "fair price"

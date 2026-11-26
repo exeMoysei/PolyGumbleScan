@@ -7,11 +7,10 @@ from decimal import Decimal
 
 from sqlalchemy import func, select
 
-from polybot.domain.premium import PremiumPlan
+from polybot.data import premium_repo, repo
+from polybot.data.tables import AdminAction, Opportunity, Outbox, Payment, Subscription
+from polybot.logic.premium import PremiumPlan
 from polybot.services.scan import ScanService
-from polybot.storage import premium as premium_repo
-from polybot.storage import repo
-from polybot.storage.models import AdminAction, Opportunity, Outbox, Payment, Subscription
 from tests.integration.test_flow import ADMIN, NOW, _approve_all, _bootstrap, settings
 
 FREE_CHAT, PREMIUM_CHAT = 2001, 2002

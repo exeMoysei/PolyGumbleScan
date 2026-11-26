@@ -50,10 +50,10 @@ wliczają się do limitu.
 
 | Plik | Zawartość |
 |---|---|
-| `src/polybot/domain/premium.py` | czyste reguły: plany, przedłużanie, limity, format payloadu faktury (tylko biblioteka standardowa) |
+| `src/polybot/logic/premium.py` | czyste reguły: plany, przedłużanie, limity, format payloadu faktury (tylko biblioteka standardowa) |
 | `src/polybot/services/premium.py` | plany i limity z ustawień |
-| `src/polybot/storage/premium.py` | zapytania: liczba alertów, płatności, `/grant`, `/revoke`, statystyki |
-| `src/polybot/telegram/premium.py` | polecenia i obsługa płatności w aiogram 3 |
+| `src/polybot/data/premium_repo.py` | zapytania: liczba alertów, płatności, `/grant`, `/revoke`, statystyki |
+| `src/polybot/bot/premium.py` | polecenia i obsługa płatności w aiogram 3 |
 | `migrations/versions/20261113_0002_premium_subscription.py` | kolumna `subscriptions.premium_until`, tabela `payments` |
 | `tests/unit/test_premium.py`, `tests/integration/test_premium.py` | testy |
 

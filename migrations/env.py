@@ -6,10 +6,23 @@ import os
 from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from polybot.storage.models import Base
+from polybot.data.tables import Base, ExactDecimal, JSONDoc, UTCDateTime
 
 config = context.config
 target_metadata = Base.metadata
+
+
+def render_item(type_: str, obj: object, autogen_context: object) -> str | bool:
+    """Write the portable column types as their PostgreSQL types, so migrations stay plain SQLAlchemy."""
+    if type_ == "type":
+        if isinstance(obj, ExactDecimal):
+            return f"sa.Numeric({obj.precision}, {obj.scale})"
+        if isinstance(obj, UTCDateTime):
+            return "sa.DateTime(timezone=True)"
+        if isinstance(obj, JSONDoc):
+            autogen_context.imports.add("from sqlalchemy.dialects import postgresql")  # type: ignore[attr-defined]
+            return "postgresql.JSONB(astext_type=sa.Text())"
+    return False
 
 
 def _url() -> str:
@@ -21,13 +34,17 @@ def _url() -> str:
 
 
 def run_offline() -> None:
-    context.configure(url=_url(), target_metadata=target_metadata, literal_binds=True, compare_type=True)
+    context.configure(
+        url=_url(), target_metadata=target_metadata, literal_binds=True, compare_type=True, render_item=render_item
+    )
     with context.begin_transaction():
         context.run_migrations()
 
 
 def _do_run(connection) -> None:  # type: ignore[no-untyped-def]
-    context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
+    context.configure(
+        connection=connection, target_metadata=target_metadata, compare_type=True, render_item=render_item
+    )
     with context.begin_transaction():
         context.run_migrations()
 
