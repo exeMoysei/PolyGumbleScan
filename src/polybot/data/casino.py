@@ -1,4 +1,5 @@
-"""Casino data source (US10, owner: Mikhailo Ivanyshyn) — SKELETON, not wired into the app yet.
+"""Casino data source (US10 #10, then US32–US34 #46–#48 in sprint 11,
+owner: Mikhailo Ivanyshyn) — SKELETON, not wired into the app yet.
 
 Goal: notice when a watched crypto-casino player places or wins a large amount.
 

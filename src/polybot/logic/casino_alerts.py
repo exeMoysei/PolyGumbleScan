@@ -1,4 +1,5 @@
-"""Casino alert rules (US10, owner: Mikhailo Ivanyshyn) — SKELETON: signatures agreed, bodies to be written.
+"""Casino alert rules (US10 #10, then US32–US34 #46–#48 in sprint 11,
+owner: Mikhailo Ivanyshyn) — SKELETON: signatures agreed, bodies to be written.
 
 Pure functions only (no network): they decide which casino bets are worth an alert.
 """

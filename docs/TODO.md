@@ -3,7 +3,7 @@
 Plan sprintów i stan issues z GitHuba: [sprinty.md](sprinty.md).
 
 Legenda: `[x]` zrobione i sprawdzone testami/przebiegiem, `[~]` zrobione, wymaga sprawdzenia na VPS z żywymi
-danymi/kluczami, `[ ]` niezrobione. Podstawowa implementacja znajduje się w `main`.
+danymi/kluczami, `[ ]` niezrobione.
 
 ## Etap 0 — audyt
 - [x] Inwentaryzacja repozytorium (był tylko README) — `docs/stage0-audit.md`
@@ -11,7 +11,8 @@ danymi/kluczami, `[ ]` niezrobione. Podstawowa implementacja znajduje się w `ma
 - [x] Porównanie kontraktów Polymarket (Gamma, CLOB, prowizje `fd`), Kalshi (`orderbook_fp`, same bidy), The Odds API v4
 - [x] Polecenie `polybot probe`: dostęp, opóźnienie, wydarzenia/rynki/kursy, głębokość, limity, część wspólna
 - [x] Wybór rynku: NBA moneyline (z dogrywką), prematch; rezerwa EPL 1X2
-- [~] Tabela z liczbą wspólnych wydarzeń w okresie obserwacji — uruchomić `probe --samples 12` na VPS
+- [x] Pomiar na żywo 26.11.2026: 48 wspólnych wydarzeń Polymarket ↔ Kalshi (NBA, NHL, EPL), 0 nierozpoznanych
+- [~] Pomiar w dłuższym okresie obserwacji — `probe --samples 12` na serwerze
 
 ## Etap 1 — szkielet i silnik
 - [x] Python 3.12, uv, `pyproject.toml`, `uv.lock`, struktura `src/polybot/{domain,adapters,matching,services,storage,telegram}`
@@ -36,7 +37,7 @@ danymi/kluczami, `[ ]` niezrobione. Podstawowa implementacja znajduje się w `ma
 - [x] Awaria jednego źródła nie zatrzymuje pozostałych (sprawdzone w Compose bez sieci)
 - [x] Tryb smoke `POLYBOT_FIXTURES_DIR`: wydarzenia testowe z bieżącym zegarem dla środowiska staging
 - [x] Arkusz z WebSocketu: zrzut + delty, luka w sekwencji → nieważny do następnego zrzutu
-- [~] Normalizacja na prawdziwych odpowiedziach — sprawdzić przez `probe` na VPS
+- [x] Normalizacja na prawdziwych odpowiedziach (Polymarket, Kalshi); poprawione prowizje `feeSchedule`, świeżość arkuszy, paczki Kalshi
 
 ## Etap 3 — zasady i skaner
 - [x] Rejestr drużyn NBA/NFL/NHL/MLB/EPL z aliasami platform, aliasy z bazy (`/alias`)
@@ -70,9 +71,21 @@ danymi/kluczami, `[ ]` niezrobione. Podstawowa implementacja znajduje się w `ma
 - [x] Wdrożenie wg SHA (`ops/deploy.sh`, workflow `deploy`)
 - [~] Pilotaż na żywych danych: opóźnienie, duplikaty, odsetek odrzuconych — po wdrożeniu
 
+## Zajęcia 26.11 — szkielet i MVP
+- [x] Warstwy `data/` → `logic/` → `bot/` + `services/`, płaska struktura, test granic warstw
+- [x] `python -m venv venv` + `requirements.txt` / `requirements-dev.txt` (z `uv.lock`)
+- [x] SQLite jako domyślna baza lokalna, PostgreSQL na serwerze; testy integracyjne działają na obu
+- [x] `python -m polybot run` — cała ścieżka MVP w jednym procesie
+- [x] Szkielety z sygnaturami: kasyna (`data/casino.py`, `logic/casino_alerts.py`), krypto (`data/crypto_prices.py`, `logic/crypto_arbitrage.py`)
+
+## Funkcje Polymarket (26.11)
+- [x] Data API v2: duże zakłady, historia portfela, ranking
+- [x] Nowy portfel z dużym zakładem (US6), obserwowane portfele (US7), `/top` (US9 — bez odsetka trafień)
+- [x] Suma YES < 1 w wydarzeniach `negRisk` (US3), przełączniki typów alertów (US8)
+- [ ] Kasyna (US10) — szkielet, czeka na wybór źródła danych
+
 ## Etap 6 — skalowanie (kolejne zadania)
-- [ ] Arbitraż wewnątrz Polymarket: suma cen YES wszystkich wyników < 1 (US3)
-- [ ] Alerty portfeli, ranking użytkowników, gracze kasyn, subskrypcja premium (US6, US7, US9, US10, US12)
+- [ ] Odsetek trafień w rankingu (US36), gracze kasyn (US10), arbitraż kryptowalut (sprinty 9–10)
 - [ ] Bezpośrednie feedy bukmacherów i giełd zakładów (osobny model odpowiedzialności dla lay)
 - [ ] 3+ wyniki przez LP/MILP (`max t: pnl[s] ≥ t`) z końcową weryfikacją w Decimal
 - [ ] Middles: różne linie totalu jako podział scenariuszy

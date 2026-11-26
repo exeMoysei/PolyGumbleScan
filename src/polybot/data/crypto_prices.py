@@ -1,5 +1,5 @@
-"""Crypto prices on exchanges (backlog: "price differences between cryptocurrencies", sprints 9–10,
-owner: Artem Vozniak) — SKELETON, not wired into the app yet.
+"""Crypto prices on exchanges (backlog "price differences between cryptocurrencies": sprint 9, US26–US28,
+issues #40–#42, owner: Artem Vozniak) — SKELETON, not wired into the app yet.
 
 The project card plans ccxt (centralised exchanges) and Jupiter / 0x (DEX) plus CoinGecko as a reference price.
 """

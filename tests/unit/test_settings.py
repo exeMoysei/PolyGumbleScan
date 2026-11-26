@@ -17,7 +17,7 @@ def test_env_example_copied_as_is_is_a_valid_configuration(monkeypatch: pytest.M
     assert s.tech_chat_id is None
     assert s.odds_api_key is None  # an empty key must not enable the Odds API adapter
     assert s.telegram_bot_token is None
-    assert s.admin_ids == [] and s.leagues == ["nba"]
+    assert s.admin_ids == [] and s.leagues == ["nba", "nhl", "epl"]
 
 
 def test_repository_contains_no_cyrillic() -> None:

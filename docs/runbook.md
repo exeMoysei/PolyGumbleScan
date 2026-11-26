@@ -1,4 +1,12 @@
-# Runbook (VPS)
+# Runbook
+
+## Start lokalny (bez Dockera)
+
+`python -m venv venv`, `pip install -r requirements.txt`, `cp .env.example .env` (token bota i `POLYBOT_ADMIN_IDS`),
+`python -m polybot run`. Wszystko działa w jednym procesie, dane w pliku `polybot.db` (SQLite), kursy w pamięci.
+Zatrzymanie: Ctrl+C. Nową bazę dostaje się, usuwając `polybot.db`.
+
+## Serwer (Docker Compose: PostgreSQL + Redis, osobne procesy)
 
 ## Wdrożenie i wycofanie
 * `ops/deploy.sh <sha>` — obraz dokładnie z danego commita, migracje logowane do `var/log/migrations-*.log`.

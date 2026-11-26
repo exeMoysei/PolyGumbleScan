@@ -1,4 +1,4 @@
-"""Price gaps between exchanges (backlog, sprint 10, owner: Artem Vozniak) — SKELETON.
+"""Price gaps between exchanges (sprint 10, US29–US31, issues #43–#45, owner: Ivan Puzaruk) — SKELETON.
 
 Same rule as the rest of PolyBot: profit is computed after every fee, on the volume really available.
 """
