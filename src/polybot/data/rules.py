@@ -33,7 +33,9 @@ _CANCEL_VOID = re.compile(
 _POSTPONE_CARRY = re.compile(
     r"postponed[^.]*?(remain open|stay open|until the game (has been|is) (completed|played))", re.IGNORECASE
 )
-_POSTPONE_HALF = re.compile(r"postponed[^.]*?(50-50|50/50)", re.IGNORECASE)
+_POSTPONE_HALF = re.compile(
+    r"(postponed|does not start by|not (?:played|completed) by|rescheduled)[^.]*?(50-50|50/50)", re.IGNORECASE
+)
 _POSTPONE_VOID = re.compile(r"postponed[^.]*?(void|refund)|(void|refund)[^.]*?postponed", re.IGNORECASE)
 _POSTPONE_NO = re.compile(r"postponed[^.]*?resolve[sd]?\s+(to\s+)?[\"“]?no\b", re.IGNORECASE)
 _TIE_HALF = re.compile(r"(tie|draw)[^.]*?(50-50|50/50)", re.IGNORECASE)

@@ -16,6 +16,7 @@ dependencies = [
     "aiogram>=3.13",
     "prometheus-client>=0.20",
     "rapidfuzz>=3.9",
+    "aiosqlite>=0.22.1",
 ]
 
 [project.scripts]

@@ -16,6 +16,8 @@ from polybot.bot.cards import render_card
 from polybot.bot.keyboards import card_keyboard
 from polybot.data import repo
 from polybot.data.tables import HiddenOpportunity, Opportunity, Outbox, Subscription
+from polybot.logic.alerts import OUTBOX_KINDS
+from polybot.logic.alerts import enabled as alert_enabled
 
 log = logging.getLogger(__name__)
 
@@ -90,6 +92,14 @@ class Notifier:
         async with self.sessions() as s:
             text, keyboard, stale = None, None, row.expires_at <= now
             if row.opportunity_id is None:
+                alert = OUTBOX_KINDS.get(row.kind)
+                if alert is not None:
+                    # user alerts (whales, followed wallets, YES sum): re-check the subscriber before sending
+                    sub = await s.get(Subscription, row.chat_id)
+                    if sub is None or not sub.active or not alert_enabled(sub.filters, alert):
+                        stale = True
+                    elif await repo.get_flag(s, repo.PUBLISHING_PAUSED) == "1":
+                        return
                 text = row.text or ""
             else:
                 opp = await s.get(Opportunity, row.opportunity_id)

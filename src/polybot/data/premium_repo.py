@@ -16,7 +16,7 @@ from polybot.logic import premium as rules
 from polybot.logic.enums import Verdict
 
 # push notifications that count towards the free daily limit (technical/admin messages do not)
-ALERT_KINDS = ("signal", "update")
+ALERT_KINDS = ("signal", "update", "yes_sum", "whale", "wallet", "casino")
 
 
 async def alerts_sent_since(s: AsyncSession, chat_ids: Iterable[int], since: datetime) -> dict[int, int]:

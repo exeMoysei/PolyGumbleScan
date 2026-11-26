@@ -5,6 +5,10 @@ from typing import Any
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from polybot.logic.alerts import ALERT_LABELS, AlertType
+from polybot.logic.alerts import enabled as alert_enabled
+from polybot.logic.alerts import toggle as toggle_alert
+
 
 class OppCb(CallbackData, prefix="o"):
     action: str  # rc = recheck, rl = rules, hd = hide
@@ -83,8 +87,19 @@ def filters_keyboard(filters: dict[str, Any]) -> InlineKeyboardMarkup:
     def mark(on: bool) -> str:
         return "☑" if on else "☐"
 
+    alert_rows = [
+        [
+            InlineKeyboardButton(
+                text=f"{mark(alert_enabled(filters, a))} {ALERT_LABELS[a]}",
+                callback_data=FltCb(field="alert", value=a.value).pack(),
+            )
+            for a in pair
+        ]
+        for pair in ((AlertType.ARBITRAGE, AlertType.YES_SUM), (AlertType.WHALES, AlertType.WALLETS))
+    ]
     return InlineKeyboardMarkup(
         inline_keyboard=[
+            *alert_rows,
             [
                 InlineKeyboardButton(
                     text=f"{mark('signal' in verdicts)} Signals",
@@ -129,4 +144,6 @@ def toggle_filter(filters: dict[str, Any], field: str, value: str) -> dict[str, 
         f["routes"] = sorted(cur) if cur and cur != all_routes else []
     elif field == "min_roi":
         f["min_roi"] = None if f.get("min_roi") == value else value
+    elif field == "alert" and value in {a.value for a in AlertType}:
+        f = toggle_alert(f, AlertType(value))
     return f

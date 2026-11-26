@@ -43,11 +43,14 @@ router = Router(name="polybot")
 
 HELP = (
     "<b>PolyBot</b> finds combinations of bets on the same event across prediction markets and sportsbooks, "
-    "where the payout covers the investment in every regular outcome.\n\n"
+    "where the payout covers the investment in every regular outcome. It also reports Polymarket events whose "
+    "YES prices add up to less than 1, new wallets placing big bets, and trades of wallets you follow.\n\n"
     "/signals — active signals for your budget\n"
     "/budget 250 — set the budget per combination\n"
     "/filters — alert types, routes and minimum ROI\n"
     "/minprofit 2.5 — minimum alert profit (0 to reset)\n"
+    "/top — Polymarket top traders (day, week, month, all; add 'volume')\n"
+    "/follow 0x… — alerts when a wallet trades · /following · /unfollow\n"
     "/premium — Premium: alerts without the daily limit\n"
     "/stop — pause alerts\n"
     "/help — help\n\n"
@@ -163,7 +166,7 @@ async def cmd_budget(message: Message, command: CommandObject, ctx: BotContext) 
 def _filters_text(filters: dict[str, Any], currency: str) -> str:
     mp = filters.get("min_profit")
     line = f"minimum profit {mp} {currency}" if mp else "minimum profit is not set (/minprofit 2.5)"
-    return f"Alert settings ({line}):"
+    return f"Alert settings ({line}).\nTop rows switch alert types on/off; the rest refines arbitrage alerts."
 
 
 async def _send_filters(message: Message, user_id: int, ctx: BotContext) -> None:
@@ -494,6 +497,9 @@ COMMANDS = [
     BotCommand(command="budget", description="Budget per combination"),
     BotCommand(command="filters", description="Filters"),
     BotCommand(command="minprofit", description="Minimum profit"),
+    BotCommand(command="top", description="Top traders"),
+    BotCommand(command="follow", description="Follow a wallet"),
+    BotCommand(command="following", description="Followed wallets"),
     BotCommand(command="premium", description="Premium"),
     BotCommand(command="menu", description="Menu"),
     BotCommand(command="help", description="Help"),
@@ -508,6 +514,9 @@ def build_dispatcher(ctx: BotContext) -> Dispatcher:
     dp = Dispatcher()
     dp["ctx"] = ctx
     dp.include_router(router)
+    from polybot.bot.wallets import router as wallets_router
+
+    dp.include_router(wallets_router)
     if ctx.settings.premium_enabled:
         from polybot.bot.premium import router as premium_router
 

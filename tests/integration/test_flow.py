@@ -11,7 +11,6 @@ from sqlalchemy import func, select
 
 from polybot.data import repo
 from polybot.data.fixtures import fixture_adapters
-from polybot.data.quote_cache import RedisQuoteStore
 from polybot.data.tables import MarketMapping, Opportunity, Outbox, Subscription
 from polybot.logic.codec import dec_quote
 from polybot.logic.enums import MappingStatus
@@ -22,6 +21,7 @@ from polybot.services.recheck import original_quotes, recheck_with
 from polybot.services.replay import replay_db
 from polybot.services.scan import ScanService
 from polybot.settings import Settings
+from tests.integration.conftest import quote_store
 
 FIX = Path(__file__).resolve().parents[1] / "fixtures"
 NOW = datetime(2026, 1, 15, 23, 0, tzinfo=UTC)
@@ -66,7 +66,7 @@ async def _approve_all(sessions) -> int:  # type: ignore[no-untyped-def]
 
 async def _bootstrap(sessions, redis, st=None):  # type: ignore[no-untyped-def]
     st = st or settings()
-    store = RedisQuoteStore(redis)
+    store = quote_store(redis)
     ingest = IngestService(st, fixture_adapters(FIX, ["nba", "epl"], now=NOW), sessions, store)
     report = await ingest.discover_once(NOW)
     return st, store, ingest, report

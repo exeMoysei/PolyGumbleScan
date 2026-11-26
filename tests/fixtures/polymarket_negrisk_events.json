@@ -1,0 +1,232 @@
+{
+ "_note": "TEST DATA \u2014 synthetic sample in the Polymarket Data API v2 / Gamma response format (checked live Nov 2026). Not real wallets.",
+ "events": [
+  {
+   "id": "e1",
+   "slug": "fed-decision-in-december",
+   "title": "Fed Decision in December?",
+   "negRisk": true,
+   "negRiskAugmented": false,
+   "closed": false,
+   "markets": [
+    {
+     "id": "1",
+     "question": "Will Cut 50+ happen?",
+     "groupItemTitle": "Cut 50+",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "outcomePrices": "[\"0.30\", \"0.70\"]",
+     "clobTokenIds": "[\"y-cut50\", \"y-cut50-no\"]",
+     "active": true,
+     "closed": false,
+     "acceptingOrders": true,
+     "negRisk": true,
+     "negRiskOther": false,
+     "orderMinSize": 5,
+     "feesEnabled": true,
+     "feeSchedule": {
+      "exponent": 1,
+      "rate": 0.01,
+      "takerOnly": true,
+      "rebateRate": 0.25
+     }
+    },
+    {
+     "id": "2",
+     "question": "Will Cut 25 happen?",
+     "groupItemTitle": "Cut 25",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "outcomePrices": "[\"0.30\", \"0.70\"]",
+     "clobTokenIds": "[\"y-cut25\", \"y-cut25-no\"]",
+     "active": true,
+     "closed": false,
+     "acceptingOrders": true,
+     "negRisk": true,
+     "negRiskOther": false,
+     "orderMinSize": 5,
+     "feesEnabled": true,
+     "feeSchedule": {
+      "exponent": 1,
+      "rate": 0.01,
+      "takerOnly": true,
+      "rebateRate": 0.25
+     }
+    },
+    {
+     "id": "3",
+     "question": "Will No change happen?",
+     "groupItemTitle": "No change",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "outcomePrices": "[\"0.30\", \"0.70\"]",
+     "clobTokenIds": "[\"y-hold\", \"y-hold-no\"]",
+     "active": true,
+     "closed": false,
+     "acceptingOrders": true,
+     "negRisk": true,
+     "negRiskOther": false,
+     "orderMinSize": 5,
+     "feesEnabled": true,
+     "feeSchedule": {
+      "exponent": 1,
+      "rate": 0.01,
+      "takerOnly": true,
+      "rebateRate": 0.25
+     }
+    },
+    {
+     "id": "4",
+     "question": "Will Hike happen?",
+     "groupItemTitle": "Hike",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "outcomePrices": "[\"0\", \"1\"]",
+     "clobTokenIds": "[\"y-hike\", \"y-hike-no\"]",
+     "active": true,
+     "closed": true,
+     "acceptingOrders": true,
+     "negRisk": true,
+     "negRiskOther": false,
+     "orderMinSize": 5,
+     "feesEnabled": true,
+     "feeSchedule": {
+      "exponent": 1,
+      "rate": 0.01,
+      "takerOnly": true,
+      "rebateRate": 0.25
+     }
+    }
+   ]
+  },
+  {
+   "id": "e2",
+   "slug": "augmented-event",
+   "title": "Who will win (outcomes can be added)?",
+   "negRisk": true,
+   "negRiskAugmented": true,
+   "closed": false,
+   "markets": [
+    {
+     "id": "5",
+     "question": "Will A happen?",
+     "groupItemTitle": "A",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "outcomePrices": "[\"0.30\", \"0.70\"]",
+     "clobTokenIds": "[\"y-a\", \"y-a-no\"]",
+     "active": true,
+     "closed": false,
+     "acceptingOrders": true,
+     "negRisk": true,
+     "negRiskOther": false,
+     "orderMinSize": 5,
+     "feesEnabled": true,
+     "feeSchedule": {
+      "exponent": 1,
+      "rate": 0.01,
+      "takerOnly": true,
+      "rebateRate": 0.25
+     }
+    },
+    {
+     "id": "6",
+     "question": "Will B happen?",
+     "groupItemTitle": "B",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "outcomePrices": "[\"0.30\", \"0.70\"]",
+     "clobTokenIds": "[\"y-b\", \"y-b-no\"]",
+     "active": true,
+     "closed": false,
+     "acceptingOrders": true,
+     "negRisk": true,
+     "negRiskOther": false,
+     "orderMinSize": 5,
+     "feesEnabled": true,
+     "feeSchedule": {
+      "exponent": 1,
+      "rate": 0.01,
+      "takerOnly": true,
+      "rebateRate": 0.25
+     }
+    }
+   ]
+  },
+  {
+   "id": "e3",
+   "slug": "decided-event",
+   "title": "Already decided",
+   "negRisk": true,
+   "negRiskAugmented": false,
+   "closed": false,
+   "markets": [
+    {
+     "id": "7",
+     "question": "Will X happen?",
+     "groupItemTitle": "X",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "outcomePrices": "[\"1\", \"0\"]",
+     "clobTokenIds": "[\"y-x\", \"y-x-no\"]",
+     "active": true,
+     "closed": true,
+     "acceptingOrders": true,
+     "negRisk": true,
+     "negRiskOther": false,
+     "orderMinSize": 5,
+     "feesEnabled": true,
+     "feeSchedule": {
+      "exponent": 1,
+      "rate": 0.01,
+      "takerOnly": true,
+      "rebateRate": 0.25
+     }
+    },
+    {
+     "id": "8",
+     "question": "Will Y happen?",
+     "groupItemTitle": "Y",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "outcomePrices": "[\"0.30\", \"0.70\"]",
+     "clobTokenIds": "[\"y-y\", \"y-y-no\"]",
+     "active": true,
+     "closed": false,
+     "acceptingOrders": true,
+     "negRisk": true,
+     "negRiskOther": false,
+     "orderMinSize": 5,
+     "feesEnabled": true,
+     "feeSchedule": {
+      "exponent": 1,
+      "rate": 0.01,
+      "takerOnly": true,
+      "rebateRate": 0.25
+     }
+    }
+   ]
+  },
+  {
+   "id": "e4",
+   "slug": "binary",
+   "title": "Plain yes/no",
+   "negRisk": false,
+   "markets": [
+    {
+     "id": "9",
+     "question": "Will Z happen?",
+     "groupItemTitle": "Z",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "outcomePrices": "[\"0.30\", \"0.70\"]",
+     "clobTokenIds": "[\"y-z\", \"y-z-no\"]",
+     "active": true,
+     "closed": false,
+     "acceptingOrders": true,
+     "negRisk": true,
+     "negRiskOther": false,
+     "orderMinSize": 5,
+     "feesEnabled": true,
+     "feeSchedule": {
+      "exponent": 1,
+      "rate": 0.01,
+      "takerOnly": true,
+      "rebateRate": 0.25
+     }
+    }
+   ]
+  }
+ ]
+}

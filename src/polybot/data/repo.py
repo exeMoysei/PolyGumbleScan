@@ -10,7 +10,7 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import delete, func, or_, select, update
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from polybot.data import premium_repo
@@ -32,6 +32,8 @@ from polybot.data.tables import (
     SystemFlag,
     TeamAlias,
 )
+from polybot.logic.alerts import AlertType
+from polybot.logic.alerts import enabled as alert_enabled
 from polybot.logic.codec import enc_market, enc_quote, enc_rules, enc_selection, enc_space
 from polybot.logic.enums import MappingStatus, OpportunityStatus, Verdict
 from polybot.logic.events import EventCluster
@@ -43,11 +45,17 @@ from polybot.logic.scanner import OpportunityDraft
 PUBLISHING_PAUSED = "publishing_paused"
 
 
+def _insert(s: AsyncSession, table: Any) -> Any:
+    """INSERT … ON CONFLICT for the database the session talks to (PostgreSQL or SQLite)."""
+    dialect = s.get_bind().dialect.name
+    return (sqlite.insert if dialect == "sqlite" else postgresql.insert)(table)
+
+
 # ----------------------------------------------------------------------------- providers / catalog
 async def upsert_venues(s: AsyncSession, venues: Iterable[Venue], caps: dict[str, Capabilities]) -> None:
     for v in venues:
         cap = caps.get(v.source)
-        stmt = insert(Provider).values(
+        stmt = _insert(s, Provider).values(
             id=v.id,
             source=v.source,
             kind=v.kind.value,
@@ -66,7 +74,7 @@ async def upsert_venues(s: AsyncSession, venues: Iterable[Venue], caps: dict[str
 
 async def upsert_source(s: AsyncSession, source: str, kind: str, caps: Capabilities | None) -> None:
     """Data source row (adapter); venues reference their source by id."""
-    stmt = insert(Provider).values(
+    stmt = _insert(s, Provider).values(
         id=source,
         source=source,
         kind=kind,
@@ -91,7 +99,7 @@ async def venues(s: AsyncSession) -> dict[str, Venue]:
 
 async def upsert_events(s: AsyncSession, events: Sequence[ProviderEvent]) -> None:
     for e in events:
-        stmt = insert(ProviderEventRow).values(
+        stmt = _insert(s, ProviderEventRow).values(
             provider=e.provider,
             external_id=e.external_id,
             league=e.league,
@@ -118,11 +126,11 @@ async def upsert_markets(s: AsyncSession, markets: Sequence[ProviderMarket]) -> 
     ids: dict[tuple[str, str], int] = {}
     for m in markets:
         r = m.rules
-        rs = insert(RuleSetRow).values(
+        rs = _insert(s, RuleSetRow).values(
             provider=m.provider, version=r.version, text_hash=r.text_hash, url=r.url, text=r.text, fields=enc_rules(r)
         )
         await s.execute(rs.on_conflict_do_nothing(index_elements=[RuleSetRow.provider, RuleSetRow.version]))
-        stmt = insert(MarketRow).values(
+        stmt = _insert(s, MarketRow).values(
             provider=m.provider,
             external_id=m.external_id,
             external_event_id=m.external_event_id,
@@ -153,7 +161,7 @@ async def upsert_markets(s: AsyncSession, markets: Sequence[ProviderMarket]) -> 
         mid = res.scalar_one()
         ids[(m.provider, m.external_id)] = mid
         for o in m.outcomes:
-            os_ = insert(OutcomeRow).values(
+            os_ = _insert(s, OutcomeRow).values(
                 market_id=mid,
                 external_outcome_id=o.external_id,
                 label=o.label[:128],
@@ -168,7 +176,7 @@ async def upsert_markets(s: AsyncSession, markets: Sequence[ProviderMarket]) -> 
 async def upsert_clusters(s: AsyncSession, clusters: Sequence[EventCluster], titles: dict[str, str]) -> None:
     for c in clusters:
         home, away, known = c.roles()
-        stmt = insert(CanonicalEvent).values(
+        stmt = _insert(s, CanonicalEvent).values(
             id=c.id,
             sport=c.sport,
             league=c.league,
@@ -341,7 +349,7 @@ async def pending_mappings(s: AsyncSession, limit: int = 10) -> list[tuple[Marke
 
 
 async def add_team_alias(s: AsyncSession, league: str, alias: str, team_id: str, user_id: int) -> None:
-    stmt = insert(TeamAlias).values(league=league, alias=alias, team_id=team_id, added_by=user_id)
+    stmt = _insert(s, TeamAlias).values(league=league, alias=alias, team_id=team_id, added_by=user_id)
     await s.execute(
         stmt.on_conflict_do_update(index_elements=[TeamAlias.league, TeamAlias.alias], set_={"team_id": team_id})
     )
@@ -372,7 +380,7 @@ async def store_quote_snapshots(s: AsyncSession, quotes: Sequence[Quote]) -> int
         )
         for q in quotes
     ]
-    await s.execute(insert(QuoteSnapshot), rows)
+    await s.execute(_insert(s, QuoteSnapshot), rows)
     return len(rows)
 
 
@@ -402,7 +410,8 @@ async def purge_old(s: AsyncSession, before: datetime) -> int:
 async def record_rejections(s: AsyncSession, key: str, counts: dict[str, int]) -> None:
     if counts:
         await s.execute(
-            insert(ScanRejection), [dict(canonical_market_key=key, reason=r[:64], count=n) for r, n in counts.items()]
+            _insert(s, ScanRejection),
+            [dict(canonical_market_key=key, reason=r[:64], count=n) for r, n in counts.items()],
         )
 
 
@@ -413,7 +422,7 @@ async def get_flag(s: AsyncSession, key: str) -> str | None:
 
 
 async def set_flag(s: AsyncSession, key: str, value: str, user_id: int | None) -> None:
-    stmt = insert(SystemFlag).values(key=key, value=value, updated_by=user_id)
+    stmt = _insert(s, SystemFlag).values(key=key, value=value, updated_by=user_id)
     await s.execute(
         stmt.on_conflict_do_update(
             index_elements=[SystemFlag.key], set_={"value": value, "updated_by": user_id, "updated_at": func.now()}
@@ -445,6 +454,8 @@ async def active_subscriptions(s: AsyncSession) -> list[Subscription]:
 
 def subscription_accepts(sub: Subscription, payload: dict[str, Any]) -> bool:
     f = sub.filters or {}
+    if not alert_enabled(f, AlertType.ARBITRAGE):
+        return False
     verdicts = f.get("verdicts") or [Verdict.SIGNAL.value]
     if payload["verdict"] not in verdicts:
         return False
@@ -574,7 +585,7 @@ async def publish_draft(
         for sub in targets:
             if sub.chat_id in limited:
                 continue
-            stmt = insert(Outbox).values(
+            stmt = _insert(s, Outbox).values(
                 opportunity_id=opp.id,
                 revision=revision,
                 chat_id=sub.chat_id,
@@ -710,7 +721,7 @@ async def enqueue_text(
 ) -> int:
     n = 0
     for chat_id in chat_ids:
-        stmt = insert(Outbox).values(
+        stmt = _insert(s, Outbox).values(
             opportunity_id=None,
             revision=0,
             chat_id=chat_id,
@@ -733,8 +744,10 @@ async def active_opportunities(
         q = q.where(Opportunity.expires_at >= now)
     if chat_budget is not None:
         q = q.where(Opportunity.budget == chat_budget)
-    q = q.order_by((Opportunity.verdict == Verdict.SIGNAL.value).desc(), Opportunity.min_profit.desc()).limit(limit)
-    return list((await s.execute(q)).scalars())
+    # sorted in Python: on SQLite money columns are fixed-scale strings, which do not sort numerically
+    rows = list((await s.execute(q)).scalars())
+    rows.sort(key=lambda o: (o.verdict != Verdict.SIGNAL.value, -Decimal(o.min_profit)))
+    return rows[:limit]
 
 
 async def latest_revision(s: AsyncSession, fingerprint: str) -> Opportunity | None:
@@ -749,7 +762,9 @@ async def latest_revision(s: AsyncSession, fingerprint: str) -> Opportunity | No
 
 
 async def hide(s: AsyncSession, chat_id: int, fingerprint: str) -> None:
-    await s.execute(insert(HiddenOpportunity).values(chat_id=chat_id, fingerprint=fingerprint).on_conflict_do_nothing())
+    await s.execute(
+        _insert(s, HiddenOpportunity).values(chat_id=chat_id, fingerprint=fingerprint).on_conflict_do_nothing()
+    )
 
 
 async def stats(s: AsyncSession, since: datetime) -> dict[str, Any]:

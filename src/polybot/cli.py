@@ -34,15 +34,10 @@ async def _with_signals(main: Awaitable[Any], stoppers: list[Callable[[], None]]
 
 
 def _resources(settings: Settings) -> tuple[Any, Any, Any]:
-    from redis.asyncio import Redis
+    from polybot.services.app import build_resources
 
-    from polybot.data.db import make_engine, make_sessionmaker
-    from polybot.data.quote_cache import RedisQuoteStore
-
-    engine = make_engine(settings.database_url)
-    sessions = make_sessionmaker(engine)
-    redis = Redis.from_url(settings.redis_url)
-    return engine, sessions, RedisQuoteStore(redis)
+    res = build_resources(settings)
+    return res.engine, res.sessions, res.store
 
 
 # ----------------------------------------------------------------------------- commands
@@ -52,13 +47,37 @@ def cmd_migrate(_: argparse.Namespace) -> int:
     from alembic import command
     from alembic.config import Config
 
+    from polybot.data.db import create_schema, is_sqlite, make_engine
+
+    settings = get_settings()
+    if is_sqlite(settings.database_url):
+        engine = make_engine(settings.database_url)
+
+        async def create() -> None:
+            await create_schema(engine)
+            await engine.dispose()
+
+        asyncio.run(create())
+        print(f"SQLite tables ready: {settings.database_url}", flush=True)
+        return 0
     root = Path(__file__).resolve().parents[2]
     cfg = Config(str(root / "alembic.ini")) if (root / "alembic.ini").exists() else Config()
     cfg.set_main_option("script_location", str(root / "migrations"))
-    os.environ.setdefault("POLYBOT_DATABASE_URL", get_settings().database_url)
+    os.environ.setdefault("POLYBOT_DATABASE_URL", settings.database_url)
     print("applying migrations…", flush=True)
     command.upgrade(cfg, "head")
     print("migrations: at head", flush=True)
+    return 0
+
+
+def cmd_run(_: argparse.Namespace) -> int:
+    """Everything in one process: data collection, scanner, wallet alerts, Telegram bot and notifications."""
+    from polybot.logging import setup_logging
+    from polybot.services.app import run_all
+
+    s = get_settings()
+    setup_logging(s.log_level, s.log_json)
+    asyncio.run(run_all(s))
     return 0
 
 
@@ -301,9 +320,10 @@ def cmd_healthcheck(_: argparse.Namespace) -> int:
         async with engine.connect() as c:
             await c.execute(text("select 1"))
         await engine.dispose()
-        r = Redis.from_url(s.redis_url)
-        await r.ping()
-        await r.aclose()
+        if s.redis_url:
+            r = Redis.from_url(s.redis_url)
+            await r.ping()
+            await r.aclose()
 
     try:
         asyncio.run(asyncio.wait_for(main(), 10))
@@ -317,7 +337,8 @@ def cmd_healthcheck(_: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="polybot", description="PolyBot arbitrage scanner")
     sub = p.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("migrate", help="apply database migrations").set_defaults(fn=cmd_migrate)
+    sub.add_parser("run", help="run everything in one process (simplest local start)").set_defaults(fn=cmd_run)
+    sub.add_parser("migrate", help="create/upgrade the database schema").set_defaults(fn=cmd_migrate)
     sub.add_parser("run-ingest", help="catalog discovery, matching and quote polling").set_defaults(fn=cmd_run_ingest)
     sub.add_parser("run-scan", help="opportunity scanner").set_defaults(fn=cmd_run_scan)
     sub.add_parser("run-bot", help="Telegram bot + notification worker").set_defaults(fn=cmd_run_bot)

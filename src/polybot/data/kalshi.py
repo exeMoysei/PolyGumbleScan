@@ -245,19 +245,39 @@ class KalshiAdapter:
                     break
         return total
 
-    async def snapshot(self, markets: list[ProviderMarket]) -> list[Quote]:
+    async def snapshot(self, markets: list[ProviderMarket], batch: int = 20) -> list[Quote]:
+        """Order books in batches (``GET /markets/orderbooks?tickers=A&tickers=B``, one ``ticker`` per book).
+
+        One request per market took too long for ~200 markets: Polymarket quotes went stale before the scan.
+        A batch that fails falls back to the single-market endpoint.
+        """
         import asyncio
+
+        by_ticker = {m.external_id: m for m in markets}
+        now = datetime.now(UTC)
 
         async def one(m: ProviderMarket) -> list[Quote]:
             payload = await self.http.get_json(f"/markets/{m.external_id}/orderbook")
-            return parse_orderbook(payload, m)
+            return parse_orderbook(payload, m, now)
 
-        results = await asyncio.gather(*(one(m) for m in markets), return_exceptions=True)
-        out: list[Quote] = []
-        for r in results:
-            if isinstance(r, list):
-                out.extend(r)
-        return out
+        async def chunk(tickers: list[str]) -> list[Quote]:
+            try:
+                payload = await self.http.get_json("/markets/orderbooks", params={"tickers": tickers})
+            except Exception:
+                parts = await asyncio.gather(*(one(by_ticker[t]) for t in tickers), return_exceptions=True)
+                return [q for part in parts if isinstance(part, list) for q in part]
+            out: list[Quote] = []
+            for book in payload.get("orderbooks") or []:
+                m = by_ticker.get(str(book.get("ticker")))
+                if m is not None:
+                    out.extend(parse_orderbook(book, m, now))
+            return out
+
+        tickers = list(by_ticker)
+        results = await asyncio.gather(
+            *(chunk(tickers[i : i + batch]) for i in range(0, len(tickers), batch)), return_exceptions=True
+        )
+        return [q for r in results if isinstance(r, list) for q in r]
 
     async def probe(self) -> ProbeReport:
         started = datetime.now(UTC)

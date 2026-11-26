@@ -6,7 +6,9 @@ Market price for sizing is always the ask ladder; last trade / midpoint are diag
 
 from __future__ import annotations
 
+import json
 import re
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -66,6 +68,8 @@ def parse_events(
     sport = LEAGUE_SPORT.get(league, "unknown")
     winner_type, winner_period = default_winner_market(league)
     for ev in payload:
+        if " - " in str(ev.get("title") or ""):
+            continue  # side events ("… - Total Corners", "… - More Markets"): props, not the winner market
         slug = str(ev.get("slug") or "")
         sm = _SLUG.match(slug)
         if ev.get("closed"):
@@ -141,7 +145,7 @@ def _parse_market(
         market_type, period = winner_type, winner_period
         pouts = tuple(ProviderOutcome(t, o, o) for o, t in zip(outcomes, tokens, strict=True))
     rules = parse_rules(PROVIDER, rules_text, default_period=period, url=url)
-    rate, exponent = _fee_params(m, fee_rate, fee_exponent)
+    rate, exponent = fee_params(m, fee_rate, fee_exponent)
     return ProviderMarket(
         provider=PROVIDER,
         external_id=str(m.get("conditionId") or m.get("id")),
@@ -159,17 +163,34 @@ def _parse_market(
     )
 
 
-def _fee_params(m: dict[str, Any], default_rate: Decimal, default_exp: Decimal) -> tuple[Decimal, Decimal]:
+def fee_params(m: dict[str, Any], default_rate: Decimal, default_exp: Decimal) -> tuple[Decimal, Decimal]:
+    """Taker fee parameters of a Gamma market.
+
+    Current Gamma markets carry ``feesEnabled`` and ``feeSchedule = {"rate", "exponent", "takerOnly", ...}``
+    (checked live in Nov 2026: 0.05 for sports, 0.01 for economics/crypto). ``fd = {r, e}`` is the older CLOB form.
+    ``feesEnabled: false`` means no taker fee.
+    """
+    schedule = m.get("feeSchedule")
+    if isinstance(schedule, str) and schedule.strip().startswith("{"):
+        schedule = json.loads(schedule)
+    if isinstance(schedule, dict) and "rate" in schedule:
+        if m.get("feesEnabled") is False:
+            return Decimal(0), dec(schedule.get("exponent", default_exp))
+        return dec(schedule["rate"]), dec(schedule.get("exponent", default_exp))
     fd = m.get("fd") if isinstance(m.get("fd"), dict) else None
     if fd:
         return dec(fd.get("r", default_rate)), dec(fd.get("e", default_exp))
+    if m.get("feesEnabled") is False:
+        return Decimal(0), default_exp
     return default_rate, default_exp
 
 
 def parse_book(book: dict[str, Any], market: ProviderMarket, received_at: datetime | None = None) -> Quote:
     now = received_at or datetime.now(UTC)
     asks = sorted(((dec(a["price"]), dec(a["size"])) for a in book.get("asks") or []), key=lambda x: x[0])
-    ts = parse_ts(book.get("timestamp")) or now
+    # A REST book is confirmed current when we receive it. Its "timestamp" is the time of the book's last change
+    # (minutes old on quiet markets, checked live Nov 2026), so using it as freshness wrongly marked fresh books stale.
+    ts = now
     status = QuoteStatus.OPEN if market.status == "open" and asks else QuoteStatus.SUSPENDED
     return Quote(
         venue_id=PROVIDER,
@@ -215,6 +236,61 @@ def apply_ws_message(msg: dict[str, Any], books: dict[str, BookState]) -> set[st
             cur.delta(side, dec(c["price"]), dec(c["size"]))
             changed.add(aid)
     return changed
+
+
+@dataclass(frozen=True, slots=True)
+class NegRiskOutcome:
+    label: str
+    token_id: str  # YES token
+    fee_rate: Decimal
+    fee_exponent: Decimal
+    min_size: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class NegRiskEvent:
+    """A multi-outcome event with mutually exclusive, exhaustive outcomes (exactly one YES pays 1 USDC)."""
+
+    id: str
+    title: str
+    url: str
+    outcomes: tuple[NegRiskOutcome, ...]
+
+
+def parse_neg_risk_event(ev: dict[str, Any], fee_rate: Decimal, fee_exponent: Decimal) -> NegRiskEvent | None:
+    """None unless every outcome is open and the outcome list is fixed (``negRiskAugmented`` false).
+
+    A closed market whose YES resolved at 0 is an eliminated outcome and is ignored; a closed market with YES at 1
+    means the event is decided.
+    """
+    if not ev.get("negRisk") or ev.get("negRiskAugmented") or ev.get("closed"):
+        return None
+    outcomes: list[NegRiskOutcome] = []
+    for m in ev.get("markets") or []:
+        prices = maybe_json_list(m.get("outcomePrices"))
+        if m.get("closed") or not m.get("active", True):
+            if prices and str(prices[0]) not in {"0", "0.0"}:
+                return None  # decided, or a closed outcome we cannot rule out
+            continue
+        if not m.get("acceptingOrders", False) or m.get("negRiskOther"):
+            return None
+        tokens = [str(t) for t in maybe_json_list(m.get("clobTokenIds"))]
+        if len(tokens) != 2:
+            return None
+        rate, exponent = fee_params(m, fee_rate, fee_exponent)
+        label = str(m.get("groupItemTitle") or m.get("question") or tokens[0])
+        outcomes.append(NegRiskOutcome(label, tokens[0], rate, exponent, opt_dec(m.get("orderMinSize")) or Decimal(5)))
+    if len(outcomes) < 2:
+        return None
+    slug = str(ev.get("slug") or "")
+    return NegRiskEvent(
+        str(ev.get("id")), str(ev.get("title") or slug), f"https://polymarket.com/event/{slug}", tuple(outcomes)
+    )
+
+
+def parse_asks(book: dict[str, Any]) -> tuple[PriceLevel, ...]:
+    asks = sorted(((dec(a["price"]), dec(a["size"])) for a in book.get("asks") or []), key=lambda x: x[0])
+    return tuple(PriceLevel(p, q) for p, q in asks if q > 0)
 
 
 class PolymarketAdapter:
@@ -283,6 +359,43 @@ class PolymarketAdapter:
                 if m:
                     quotes.append(parse_book(b, m, now))
         return quotes
+
+    async def neg_risk_events(self, max_events: int = 200) -> list[NegRiskEvent]:
+        """Open multi-outcome events of every category, most traded first (used by the YES-sum scanner)."""
+        out: list[NegRiskEvent] = []
+        offset = 0
+        while offset < max_events:
+            page = await self.gamma.get_json(
+                "/events",
+                params={
+                    "active": "true",
+                    "closed": "false",
+                    "limit": 100,
+                    "offset": offset,
+                    "order": "volume24hr",
+                    "ascending": "false",
+                },
+            )
+            if not isinstance(page, list) or not page:
+                break
+            for ev in page:
+                parsed = parse_neg_risk_event(ev, self.fee_rate, self.fee_exponent)
+                if parsed is not None:
+                    out.append(parsed)
+            if len(page) < 100:
+                break
+            offset += 100
+        return out
+
+    async def asks(self, token_ids: list[str]) -> dict[str, tuple[PriceLevel, ...]]:
+        """Ask ladders (best first) for many tokens via ``POST /books``."""
+        out: dict[str, tuple[PriceLevel, ...]] = {}
+        for i in range(0, len(token_ids), 50):
+            chunk = token_ids[i : i + 50]
+            books = await self.clob.request_json("POST", "/books", json=[{"token_id": t} for t in chunk])
+            for b in books or []:
+                out[str(b.get("asset_id"))] = parse_asks(b)
+        return out
 
     async def stream(
         self,

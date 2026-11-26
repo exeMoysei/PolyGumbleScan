@@ -172,6 +172,8 @@ WOL|Wolverhampton Wanderers|wolves;wolverhampton|
 LEI|Leicester City|leicester|
 IPS|Ipswich Town|ipswich|
 SOU|Southampton||
+COV|Coventry City|coventry|
+HUL|Hull City|hull|
 """,
 }
 

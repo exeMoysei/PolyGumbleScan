@@ -21,8 +21,10 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_json: bool = True
 
-    database_url: str = "postgresql+asyncpg://polybot:polybot@localhost:5432/polybot"
-    redis_url: str = "redis://localhost:6379/0"
+    # local default: one SQLite file and an in-memory quote cache (no PostgreSQL, Redis or Docker needed);
+    # docker-compose sets PostgreSQL and Redis
+    database_url: str = "sqlite+aiosqlite:///polybot.db"
+    redis_url: str | None = None
 
     # ---------------------------------------------------------------- telegram
     telegram_bot_token: SecretStr | None = None
@@ -98,6 +100,20 @@ class Settings(BaseSettings):
     free_signals_shown: int = 1  # cards returned by /signals on the free plan
     free_max_budget: Decimal = Decimal("250")
     support_contact: str | None = None  # shown by /paysupport, e.g. "@team_support"
+
+    # ---------------------------------------------------------------- wallets and Polymarket-only alerts
+    wallets_enabled: bool = True
+    wallets_interval_s: int = 60
+    whale_min_usdc: Decimal = Decimal("5000")  # US6: a "large bet"
+    whale_max_prior_trades: int = 10  # US6: a wallet with at most this many trades …
+    whale_max_age_days: int = 7  # … all within this many days counts as "new"
+    follow_default_min_usdc: Decimal = Decimal("100")  # US7: smallest followed-wallet trade that is reported
+    max_followed_per_chat: int = 20
+    yes_sum_enabled: bool = True
+    yes_sum_interval_s: int = 120
+    yes_sum_max_events: int = 300
+    yes_sum_budget: Decimal = Decimal("1000")
+    yes_sum_min_profit: Decimal = Decimal("0.50")
 
     # ---------------------------------------------------------------- notify
     outbox_lease_s: int = 30
