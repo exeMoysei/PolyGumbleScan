@@ -9,19 +9,19 @@ from pathlib import Path
 
 from sqlalchemy import func, select
 
-from polybot.adapters.fixture import fixture_adapters
-from polybot.codec import dec_quote
-from polybot.domain.enums import MappingStatus
-from polybot.domain.models import PriceLevel
+from polybot.data import repo
+from polybot.data.fixtures import fixture_adapters
+from polybot.data.quote_cache import RedisQuoteStore
+from polybot.data.tables import MarketMapping, Opportunity, Outbox, Subscription
+from polybot.logic.codec import dec_quote
+from polybot.logic.enums import MappingStatus
+from polybot.logic.models import PriceLevel
 from polybot.services.ingest import IngestService
 from polybot.services.pipeline import fx_table_from, scan_config_from
 from polybot.services.recheck import original_quotes, recheck_with
 from polybot.services.replay import replay_db
 from polybot.services.scan import ScanService
 from polybot.settings import Settings
-from polybot.storage import repo
-from polybot.storage.models import MarketMapping, Opportunity, Outbox, Subscription
-from polybot.storage.quotes import RedisQuoteStore
 
 FIX = Path(__file__).resolve().parents[1] / "fixtures"
 NOW = datetime(2026, 1, 15, 23, 0, tzinfo=UTC)
@@ -47,7 +47,7 @@ class FakeSender:
         self.fail_next: str | None = None
 
     async def send(self, chat_id, text, keyboard):  # type: ignore[no-untyped-def]
-        from polybot.telegram.notifier import SendError
+        from polybot.bot.notifier import SendError
 
         if self.fail_next:
             kind, self.fail_next = self.fail_next, None
@@ -112,7 +112,7 @@ async def test_scan_publishes_only_after_approval_and_dedupes(sessions, redis) -
 
 
 async def test_notifier_lease_retry_and_expiry(sessions, redis) -> None:  # type: ignore[no-untyped-def]
-    from polybot.telegram.notifier import Notifier
+    from polybot.bot.notifier import Notifier
 
     st, store, ingest, _ = await _bootstrap(sessions, redis)
     async with sessions() as s, s.begin():
@@ -395,7 +395,7 @@ async def test_unchanged_prices_refresh_payload_without_new_revision(sessions, r
 
 
 async def test_outbox_respects_telegram_retry_after(sessions, redis) -> None:  # type: ignore[no-untyped-def]
-    from polybot.telegram.notifier import Notifier, SendError
+    from polybot.bot.notifier import Notifier, SendError
 
     class RateLimited(FakeSender):
         async def send(self, chat_id, text, keyboard):  # type: ignore[no-untyped-def]
@@ -413,7 +413,7 @@ async def test_outbox_respects_telegram_retry_after(sessions, redis) -> None:  #
 
 
 async def test_notifier_rechecks_pause_and_subscription_before_sending(sessions, redis) -> None:  # type: ignore[no-untyped-def]
-    from polybot.telegram.notifier import Notifier
+    from polybot.bot.notifier import Notifier
 
     st, store, ingest, _ = await _bootstrap(sessions, redis)
     async with sessions() as s, s.begin():
@@ -444,8 +444,8 @@ async def test_recheck_cannot_revive_a_rejected_mapping(sessions, redis) -> None
 
     from aiogram.types import Chat, Message, User
 
-    from polybot.telegram.bot import BotContext, cb_recheck
-    from polybot.telegram.keyboards import OppCb
+    from polybot.bot.handlers import BotContext, cb_recheck
+    from polybot.bot.keyboards import OppCb
 
     st, store, ingest, _ = await _bootstrap(sessions, redis)
     await _approve_all(sessions)
@@ -458,7 +458,7 @@ async def test_recheck_cannot_revive_a_rejected_mapping(sessions, redis) -> None
         opp = (await s.execute(select(Opportunity).where(Opportunity.verdict == "signal"))).scalars().first()
         assert opp is not None
         # Reject the exact market used in this card.
-        from polybot.storage.models import MarketRow
+        from polybot.data.tables import MarketRow
 
         mid = opp.payload["legs"][0]["market"]["external_id"]
         mapping = (
@@ -471,7 +471,7 @@ async def test_recheck_cannot_revive_a_rejected_mapping(sessions, redis) -> None
     callback = SimpleNamespace(
         message=message, from_user=User(id=1001, is_bot=False, first_name="Test"), answer=AsyncMock()
     )
-    with patch("polybot.telegram.bot.fetch_fresh", new_callable=AsyncMock) as fetch:
+    with patch("polybot.bot.handlers.fetch_fresh", new_callable=AsyncMock) as fetch:
         await cb_recheck(callback, data, BotContext(st, sessions, ingest.adapters))  # type: ignore[arg-type]
         fetch.assert_not_awaited()
         assert "approval has changed" in callback.answer.call_args.args[0]

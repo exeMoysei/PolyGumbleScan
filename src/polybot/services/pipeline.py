@@ -2,21 +2,21 @@
 
 from __future__ import annotations
 
-from collections import Counter, defaultdict
+from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-from polybot.adapters.base import Adapter, Catalog
-from polybot.domain.models import FxRate, FxTable, ProviderEvent, ProviderMarket, Quote, Venue
-from polybot.domain.solver import SolverConfig
-from polybot.domain.verdict import Thresholds
-from polybot.matching.catalog import MatchReport, match_catalog
-from polybot.matching.events import EventCluster
-from polybot.matching.markets import MarketProposal
-from polybot.matching.teams import TeamRegistry
-from polybot.services.scanner import EventInfo, OpportunityDraft, QuoteKey, ScanConfig, scan_key
+from polybot.data.sources import Adapter, Catalog
+from polybot.logic.catalog import MatchReport, match_catalog
+from polybot.logic.events import EventCluster
+from polybot.logic.markets import MarketProposal
+from polybot.logic.models import FxRate, FxTable, ProviderEvent, ProviderMarket, Quote, Venue
+from polybot.logic.scanner import EventInfo, OpportunityDraft, QuoteKey, ScanConfig, index_quotes, scan_key
+from polybot.logic.solver import SolverConfig
+from polybot.logic.teams import TeamRegistry
+from polybot.logic.verdict import Thresholds
 from polybot.settings import Settings
 
 
@@ -62,30 +62,6 @@ def event_info(cluster: EventCluster, registry: TeamRegistry) -> EventInfo:
     else:
         title = f"{an} @ {hn}"
     return EventInfo(cluster.id, cluster.league, title, cluster.start_at, hn, an)
-
-
-def index_quotes(quotes: Sequence[Quote]) -> dict[QuoteKey, list[Quote]]:
-    """Latest quote per (venue, market, outcome); late updates never overwrite newer ones."""
-    latest: dict[tuple[str, str, str], Quote] = {}
-    for q in quotes:
-        k = q.key
-        cur = latest.get(k)
-        if cur is None or is_newer(q, cur):
-            latest[k] = q
-    out: dict[QuoteKey, list[Quote]] = defaultdict(list)
-    for q in latest.values():
-        out[(q.provider, q.market_external_id, q.outcome_external_id)].append(q)
-    return dict(out)
-
-
-def is_newer(new: Quote, old: Quote) -> bool:
-    if new.sequence is not None and old.sequence is not None and new.source_at == old.source_at:
-        return new.sequence > old.sequence
-    if new.source_at != old.source_at:
-        return new.source_at > old.source_at
-    if new.sequence is not None and old.sequence is not None:
-        return new.sequence > old.sequence
-    return new.received_at >= old.received_at
 
 
 @dataclass(slots=True)

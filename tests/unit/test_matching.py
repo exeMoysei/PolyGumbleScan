@@ -6,14 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from polybot.adapters.fixture import fixture_adapters
-from polybot.adapters.rules_parser import parse_rules
-from polybot.domain.enums import MappingStatus, MarketType, Period, SettlementPolicy
-from polybot.domain.models import ProviderEvent, ProviderMarket, ProviderOutcome, StartPrecision
-from polybot.matching.catalog import match_catalog
-from polybot.matching.events import cluster_events, match, resolve_event
-from polybot.matching.markets import compatibility_issues, map_market, revalidate
-from polybot.matching.teams import TeamRegistry
+from polybot.data.fixtures import fixture_adapters
+from polybot.data.rules import parse_rules
+from polybot.logic.catalog import match_catalog
+from polybot.logic.enums import MappingStatus, MarketType, Period, SettlementPolicy
+from polybot.logic.events import cluster_events, match, resolve_event
+from polybot.logic.markets import compatibility_issues, map_market, revalidate
+from polybot.logic.models import ProviderEvent, ProviderMarket, ProviderOutcome, StartPrecision
+from polybot.logic.teams import TeamRegistry
 
 FIX = Path(__file__).parent.parent / "fixtures"
 REG = TeamRegistry.default()

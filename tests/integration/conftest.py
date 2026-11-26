@@ -13,8 +13,8 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from polybot.storage.db import make_engine, make_sessionmaker
-from polybot.storage.models import Base
+from polybot.data.db import make_engine, make_sessionmaker
+from polybot.data.tables import Base
 
 DB_URL = os.environ.get("POLYBOT_TEST_DATABASE_URL")
 REDIS_URL = os.environ.get("POLYBOT_TEST_REDIS_URL")

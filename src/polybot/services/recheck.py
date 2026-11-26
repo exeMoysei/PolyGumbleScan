@@ -7,13 +7,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from polybot.adapters.base import Adapter
-from polybot.codec import dec_market, dec_quote, dec_selection, dec_space, dec_venue
-from polybot.domain.enums import MappingStatus
-from polybot.domain.models import FxTable, ProviderMarket, Quote
-from polybot.matching.markets import CanonicalOutcome, MarketProposal
-from polybot.services.pipeline import index_quotes
-from polybot.services.scanner import EventInfo, OpportunityDraft, ScanConfig, fingerprint, scan_key
+from polybot.data.sources import Adapter
+from polybot.logic.codec import dec_market, dec_quote, dec_selection, dec_space, dec_venue
+from polybot.logic.enums import MappingStatus
+from polybot.logic.markets import CanonicalOutcome, MarketProposal
+from polybot.logic.models import FxTable, ProviderMarket, Quote
+from polybot.logic.scanner import EventInfo, OpportunityDraft, ScanConfig, fingerprint, index_quotes, scan_key
 
 
 @dataclass(frozen=True, slots=True)

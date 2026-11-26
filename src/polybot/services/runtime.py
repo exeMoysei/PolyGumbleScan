@@ -5,12 +5,12 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
-from polybot.adapters.base import Adapter
-from polybot.adapters.kalshi.adapter import KalshiAdapter
-from polybot.adapters.odds_api.adapter import OddsApiAdapter
-from polybot.adapters.polymarket.adapter import PolymarketAdapter
-from polybot.domain.enums import VenueKind
-from polybot.matching.teams import TeamRegistry
+from polybot.data.kalshi import KalshiAdapter
+from polybot.data.odds_api import OddsApiAdapter
+from polybot.data.polymarket import PolymarketAdapter
+from polybot.data.sources import Adapter
+from polybot.logic.enums import VenueKind
+from polybot.logic.teams import TeamRegistry
 from polybot.settings import Settings
 
 SOURCE_KIND = {"polymarket": VenueKind.PREDICTION, "kalshi": VenueKind.PREDICTION, "oddsapi": VenueKind.SPORTSBOOK}
@@ -21,7 +21,7 @@ def build_adapters(settings: Settings) -> list[Adapter]:
     if settings.fixtures_dir:
         from pathlib import Path
 
-        from polybot.adapters.fixture import fixture_adapters
+        from polybot.data.fixtures import fixture_adapters
 
         return list(fixture_adapters(Path(settings.fixtures_dir), settings.leagues, live=True))
     adapters: list[Any] = []

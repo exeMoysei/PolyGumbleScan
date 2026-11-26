@@ -2,14 +2,14 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
-from polybot.adapters.fixture import fixture_adapters
+from polybot.bot.cards import render_card, render_closed, render_rules
+from polybot.bot.keyboards import toggle_filter
+from polybot.data.fixtures import fixture_adapters
 from polybot.logging import mask
-from polybot.matching.teams import TeamRegistry
-from polybot.services.payload import draft_payload
+from polybot.logic.payload import draft_payload
+from polybot.logic.scanner import ScanConfig
+from polybot.logic.teams import TeamRegistry
 from polybot.services.pipeline import collect, run_offline
-from polybot.services.scanner import ScanConfig
-from polybot.telegram.cards import render_card, render_closed, render_rules
-from polybot.telegram.keyboards import toggle_filter
 from tests.unit.test_pipeline import fx
 
 FIX = Path(__file__).parent.parent / "fixtures"
@@ -68,8 +68,8 @@ def test_log_masking() -> None:
 async def test_all_fixture_cards_and_keyboards_are_english() -> None:
     import re
 
-    from polybot.telegram.bot import ADMIN_HELP, COMMANDS, HELP
-    from polybot.telegram.keyboards import card_keyboard, filters_keyboard, main_menu_keyboard, mapping_keyboard
+    from polybot.bot.handlers import ADMIN_HELP, COMMANDS, HELP
+    from polybot.bot.keyboards import card_keyboard, filters_keyboard, main_menu_keyboard, mapping_keyboard
 
     texts = [HELP, ADMIN_HELP, *(c.description for c in COMMANDS)]
     keyboards = [main_menu_keyboard(), filters_keyboard({}), mapping_keyboard(1, "abc123")]

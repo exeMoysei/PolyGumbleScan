@@ -5,12 +5,12 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
-from polybot.adapters.fixture import fixture_adapters
-from polybot.domain.enums import Route, Verdict
-from polybot.domain.models import FxRate, FxTable
-from polybot.matching.teams import TeamRegistry
-from polybot.services.pipeline import collect, index_quotes, run_offline
-from polybot.services.scanner import ScanConfig
+from polybot.data.fixtures import fixture_adapters
+from polybot.logic.enums import Route, Verdict
+from polybot.logic.models import FxRate, FxTable
+from polybot.logic.scanner import ScanConfig, index_quotes
+from polybot.logic.teams import TeamRegistry
+from polybot.services.pipeline import collect, run_offline
 
 FIX = Path(__file__).parent.parent / "fixtures"
 NOW = datetime(2026, 1, 15, 23, 0, tzinfo=UTC)  # 90 minutes before tip-off
@@ -149,9 +149,9 @@ async def test_opportunity_identity_is_independent_for_each_budget() -> None:
 
 
 async def test_old_opportunity_identity_can_be_rechecked() -> None:
-    from polybot.services.payload import draft_payload
+    from polybot.logic.payload import draft_payload
+    from polybot.logic.scanner import fingerprint
     from polybot.services.recheck import original_quotes, recheck_with
-    from polybot.services.scanner import fingerprint
 
     _, scan = await run()
     draft = scan.drafts[0]

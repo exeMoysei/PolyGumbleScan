@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from polybot.domain.enums import (
+from polybot.logic.enums import (
     FreshnessSource,
     MarketType,
     Period,
@@ -13,10 +13,10 @@ from polybot.domain.enums import (
     SettlementPolicy,
     VenueKind,
 )
-from polybot.domain.fees import FeeModel, KalshiTakerFee, NoFee
-from polybot.domain.legs import Leg
-from polybot.domain.models import FxRate, PriceLevel, Quote, RuleSet, Selection, Venue
-from polybot.domain.scenarios import ScenarioSpace, build_space
+from polybot.logic.fees import FeeModel, KalshiTakerFee, NoFee
+from polybot.logic.legs import Leg
+from polybot.logic.models import FxRate, PriceLevel, Quote, RuleSet, Selection, Venue
+from polybot.logic.scenarios import ScenarioSpace, build_space
 
 D = Decimal
 NOW = datetime(2026, 1, 15, 18, 0, tzinfo=UTC)

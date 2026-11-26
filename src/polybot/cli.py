@@ -36,8 +36,8 @@ async def _with_signals(main: Awaitable[Any], stoppers: list[Callable[[], None]]
 def _resources(settings: Settings) -> tuple[Any, Any, Any]:
     from redis.asyncio import Redis
 
-    from polybot.storage.db import make_engine, make_sessionmaker
-    from polybot.storage.quotes import RedisQuoteStore
+    from polybot.data.db import make_engine, make_sessionmaker
+    from polybot.data.quote_cache import RedisQuoteStore
 
     engine = make_engine(settings.database_url)
     sessions = make_sessionmaker(engine)
@@ -109,10 +109,10 @@ def cmd_run_scan(_: argparse.Namespace) -> int:
 
 def cmd_run_bot(_: argparse.Namespace) -> int:
     from polybot import metrics
+    from polybot.bot.handlers import COMMANDS, BotContext, build_bot, build_dispatcher
+    from polybot.bot.notifier import AiogramSender, Notifier
     from polybot.logging import setup_logging
     from polybot.services.runtime import build_adapters
-    from polybot.telegram.bot import COMMANDS, BotContext, build_bot, build_dispatcher
-    from polybot.telegram.notifier import AiogramSender, Notifier
 
     s = get_settings()
     setup_logging(s.log_level, s.log_json)
@@ -144,8 +144,8 @@ def cmd_run_bot(_: argparse.Namespace) -> int:
 
 
 def _print_report(report: Any, scan: Any, show_cards: bool) -> None:
-    from polybot.services.payload import draft_payload
-    from polybot.telegram.cards import render_card
+    from polybot.bot.cards import render_card
+    from polybot.logic.payload import draft_payload
 
     print(
         f"\n=== Matching: {len(report.clusters)} events, {len(report.cross_venue_clusters)} shared, "
@@ -168,8 +168,8 @@ def _print_report(report: Any, scan: Any, show_cards: bool) -> None:
 
 def cmd_demo(args: argparse.Namespace) -> int:
     """Full offline pipeline on the TEST DATA fixtures (no network, no database)."""
-    from polybot.adapters.fixture import fixture_adapters
-    from polybot.matching.teams import TeamRegistry
+    from polybot.data.fixtures import fixture_adapters
+    from polybot.logic.teams import TeamRegistry
     from polybot.services.pipeline import collect, fx_table_from, run_offline, scan_config_from
 
     s = get_settings()
@@ -186,7 +186,7 @@ def cmd_demo(args: argparse.Namespace) -> int:
 
 def cmd_probe(args: argparse.Namespace) -> int:
     """Stage-0 probe: access, volume, depth/limit coverage and cross-venue overlap of live sources."""
-    from polybot.matching.catalog import match_catalog
+    from polybot.logic.catalog import match_catalog
     from polybot.services.pipeline import collect
     from polybot.services.runtime import build_adapters, registry_with_aliases
 
@@ -237,10 +237,10 @@ def cmd_probe(args: argparse.Namespace) -> int:
 
 
 def cmd_replay(args: argparse.Namespace) -> int:
-    from polybot.services.payload import draft_payload
+    from polybot.bot.cards import render_card
+    from polybot.logic.payload import draft_payload
     from polybot.services.pipeline import fx_table_from, scan_config_from
     from polybot.services.replay import replay_db
-    from polybot.telegram.cards import render_card
 
     if args.fixtures:
         ns = argparse.Namespace(fixtures=args.fixtures, at=args.at, budget=args.budget, leagues=args.leagues)
@@ -269,7 +269,7 @@ def cmd_replay(args: argparse.Namespace) -> int:
 
 
 def cmd_mappings(args: argparse.Namespace) -> int:
-    from polybot.storage import repo
+    from polybot.data import repo
 
     s = get_settings()
     engine, sessions, _ = _resources(s)
@@ -292,7 +292,7 @@ def cmd_healthcheck(_: argparse.Namespace) -> int:
     from redis.asyncio import Redis
     from sqlalchemy import text
 
-    from polybot.storage.db import make_engine
+    from polybot.data.db import make_engine
 
     s = get_settings()
 

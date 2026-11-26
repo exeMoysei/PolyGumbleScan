@@ -6,7 +6,7 @@ import os
 from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from polybot.storage.models import Base
+from polybot.data.tables import Base
 
 config = context.config
 target_metadata = Base.metadata

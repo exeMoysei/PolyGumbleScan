@@ -10,15 +10,15 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from polybot import metrics
-from polybot.adapters.base import Adapter, Catalog
-from polybot.domain.enums import MappingStatus
-from polybot.domain.models import Quote
-from polybot.matching.catalog import MatchReport, match_catalog
+from polybot.data import repo
+from polybot.data.quote_cache import QuoteStore
+from polybot.data.sources import Adapter, Catalog
+from polybot.logic.catalog import MatchReport, match_catalog
+from polybot.logic.enums import MappingStatus
+from polybot.logic.models import Quote
 from polybot.services.pipeline import event_info
 from polybot.services.runtime import SOURCE_KIND, registry_with_aliases
 from polybot.settings import Settings
-from polybot.storage import repo
-from polybot.storage.quotes import QuoteStore
 
 log = logging.getLogger(__name__)
 

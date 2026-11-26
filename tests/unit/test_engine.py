@@ -2,12 +2,12 @@
 
 from decimal import Decimal
 
-from polybot.domain.enums import MarketType, Period, SettlementPolicy, SolveStatus, Verdict
-from polybot.domain.fees import KalshiTakerFee, PolymarketTakerFee
-from polybot.domain.prefilter import ideal_stakes, prefilter
-from polybot.domain.scenarios import build_space
-from polybot.domain.solver import SolverConfig, evaluate, solve
-from polybot.domain.verdict import Thresholds, assess
+from polybot.logic.enums import MarketType, Period, SettlementPolicy, SolveStatus, Verdict
+from polybot.logic.fees import KalshiTakerFee, PolymarketTakerFee
+from polybot.logic.prefilter import ideal_stakes, prefilter
+from polybot.logic.scenarios import build_space
+from polybot.logic.solver import SolverConfig, evaluate, solve
+from polybot.logic.verdict import Thresholds, assess
 from tests.factories import (
     KALSHI,
     POLY,
@@ -258,7 +258,7 @@ def test_nfl_tie_uses_venue_rules() -> None:
 
 
 def test_fx_reserve_is_conservative() -> None:
-    from polybot.domain.models import FxRate
+    from polybot.logic.models import FxRate
     from tests.factories import NOW
 
     space = nba_space()

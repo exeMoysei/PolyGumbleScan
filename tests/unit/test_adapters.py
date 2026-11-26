@@ -8,16 +8,16 @@ from pathlib import Path
 import httpx
 import pytest
 
-from polybot.adapters.book_state import BookState
-from polybot.adapters.common import parse_ts
-from polybot.adapters.http import HttpClient, HttpError, mask_url
-from polybot.adapters.kalshi.adapter import parse_events as k_events
-from polybot.adapters.kalshi.adapter import parse_orderbook, parse_ticker_start
-from polybot.adapters.odds_api.adapter import parse_odds
-from polybot.adapters.polymarket.adapter import apply_ws_message, parse_book
-from polybot.adapters.polymarket.adapter import parse_events as p_events
-from polybot.domain.enums import FreshnessSource, MarketType, Period, QuoteStatus, SettlementPolicy, VenueKind
-from polybot.domain.models import StartPrecision
+from polybot.data.http import HttpClient, HttpError, mask_url
+from polybot.data.kalshi import parse_events as k_events
+from polybot.data.kalshi import parse_orderbook, parse_ticker_start
+from polybot.data.odds_api import parse_odds
+from polybot.data.orderbook import BookState
+from polybot.data.parsing import parse_ts
+from polybot.data.polymarket import apply_ws_message, parse_book
+from polybot.data.polymarket import parse_events as p_events
+from polybot.logic.enums import FreshnessSource, MarketType, Period, QuoteStatus, SettlementPolicy, VenueKind
+from polybot.logic.models import StartPrecision
 
 FIX = Path(__file__).parent.parent / "fixtures"
 D = Decimal
@@ -28,7 +28,7 @@ def load(rel: str):  # type: ignore[no-untyped-def]
 
 
 def test_polymarket_events_and_rules() -> None:
-    cat = p_events(load("polymarket/events_nba.json")["events"], "nba")
+    cat = p_events(load("polymarket_events_nba.json")["events"], "nba")
     assert len(cat.events) == 3 and len(cat.markets) == 3
     ev = cat.events[0]
     assert ev.start_at == datetime(2026, 1, 16, 0, 30, tzinfo=UTC)
@@ -42,7 +42,7 @@ def test_polymarket_events_and_rules() -> None:
 
 
 def test_polymarket_soccer_binary_markets() -> None:
-    cat = p_events(load("polymarket/events_epl.json")["events"], "epl")
+    cat = p_events(load("polymarket_events_epl.json")["events"], "epl")
     subjects = [(o.subject, o.negated) for m in cat.markets for o in m.outcomes]
     assert ("draw", False) in subjects and ("Arsenal", True) in subjects
     assert all(m.market_type == MarketType.MATCH_RESULT and m.period == Period.REGULATION for m in cat.markets)
@@ -50,8 +50,8 @@ def test_polymarket_soccer_binary_markets() -> None:
 
 
 def test_polymarket_book_sorted_best_ask_first() -> None:
-    cat = p_events(load("polymarket/events_nba.json")["events"], "nba")
-    book = next(b for b in load("polymarket/books.json")["books"] if b["asset_id"] == "tok-lal-0115")
+    cat = p_events(load("polymarket_events_nba.json")["events"], "nba")
+    book = next(b for b in load("polymarket_books.json")["books"] if b["asset_id"] == "tok-lal-0115")
     q = parse_book(book, cat.markets[0])
     assert [lv.price for lv in q.levels] == [D("0.42"), D("0.43"), D("0.45")]
     assert q.min_size == D(5) and q.currency == "USDC" and q.freshness == FreshnessSource.VENUE
@@ -65,8 +65,8 @@ def test_kalshi_ticker_dates() -> None:
 
 
 def test_kalshi_asks_derived_from_opposite_bids_both_formats() -> None:
-    cat = k_events(load("kalshi/events_nba.json"), "nba")
-    books = load("kalshi/orderbooks.json")["books"]
+    cat = k_events(load("kalshi_events_nba.json"), "nba")
+    books = load("kalshi_orderbooks.json")["books"]
     lal = next(m for m in cat.markets if m.external_id.endswith("-LAL"))
     yes, no = parse_orderbook(books[lal.external_id], lal)
     # NO bids 0.55x120, 0.54x300 -> YES asks 0.45x120, 0.46x300 (sorted, sizes preserved)
@@ -82,7 +82,7 @@ def test_kalshi_asks_derived_from_opposite_bids_both_formats() -> None:
 
 
 def test_odds_api_venues_and_aggregator_freshness() -> None:
-    cat = parse_odds(load("oddsapi/odds_nba.json")["data"], "nba", "eu", currency="USD")
+    cat = parse_odds(load("oddsapi_odds_nba.json")["data"], "nba", "eu", currency="USD")
     assert {v.id for v in cat.venues} == {"oddsapi:pinnacle:eu", "oddsapi:testbook:eu"}
     assert all(v.kind == VenueKind.SPORTSBOOK and v.source == "oddsapi" for v in cat.venues)
     q = cat.quotes[0]
@@ -91,12 +91,12 @@ def test_odds_api_venues_and_aggregator_freshness() -> None:
     ev = cat.events[0]
     assert ev.home == "Boston Celtics" and ev.away == "Los Angeles Lakers"
     assert all(m.rules.assumed for m in cat.markets)
-    filtered = parse_odds(load("oddsapi/odds_nba.json")["data"], "nba", "eu", bookmakers={"pinnacle"})
+    filtered = parse_odds(load("oddsapi_odds_nba.json")["data"], "nba", "eu", bookmakers={"pinnacle"})
     assert {v.id for v in filtered.venues} == {"oddsapi:pinnacle:eu"}
 
 
 def test_odds_api_soccer_h2h_is_three_way() -> None:
-    cat = parse_odds(load("oddsapi/odds_epl.json")["data"], "epl", "eu")
+    cat = parse_odds(load("oddsapi_odds_epl.json")["data"], "epl", "eu")
     m = cat.markets[0]
     assert m.market_type == MarketType.MATCH_RESULT and m.period == Period.REGULATION
     assert {o.subject for o in m.outcomes} == {"Arsenal", "Chelsea", "draw"}

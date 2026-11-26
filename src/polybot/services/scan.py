@@ -14,16 +14,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from polybot import metrics
-from polybot.codec import dec_market, dec_selection, dec_space
-from polybot.domain.enums import MappingStatus
-from polybot.domain.scenarios import ScenarioSpace
-from polybot.matching.markets import CanonicalOutcome, MarketProposal
-from polybot.services.pipeline import fx_table_from, index_quotes, scan_config_from
-from polybot.services.scanner import EventInfo, OpportunityDraft, scan_key
+from polybot.data import repo
+from polybot.data.quote_cache import QuoteStore, RedisQuoteStore
+from polybot.data.tables import CanonicalEvent, MarketMapping, MarketRow
+from polybot.logic.codec import dec_market, dec_selection, dec_space
+from polybot.logic.enums import MappingStatus
+from polybot.logic.markets import CanonicalOutcome, MarketProposal
+from polybot.logic.scanner import EventInfo, OpportunityDraft, index_quotes, scan_key
+from polybot.logic.scenarios import ScenarioSpace
+from polybot.services.pipeline import fx_table_from, scan_config_from
 from polybot.settings import Settings
-from polybot.storage import repo
-from polybot.storage.models import CanonicalEvent, MarketMapping, MarketRow
-from polybot.storage.quotes import QuoteStore, RedisQuoteStore
 
 log = logging.getLogger(__name__)
 

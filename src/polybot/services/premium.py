@@ -1,12 +1,12 @@
-"""Premium (US12) glue between settings and the pure rules in ``polybot.domain.premium``."""
+"""Premium (US12) glue between settings and the pure rules in ``polybot.logic.premium``."""
 
 from __future__ import annotations
 
 from datetime import datetime
 
-from polybot.domain.premium import PlanLimits, PremiumPlan, is_premium, limits_for
+from polybot.data.tables import Subscription
+from polybot.logic.premium import PlanLimits, PremiumPlan, is_premium, limits_for
 from polybot.settings import Settings
-from polybot.storage.models import Subscription
 
 
 def plans_from(settings: Settings) -> tuple[PremiumPlan, ...]:

@@ -8,7 +8,7 @@ from functools import lru_cache
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from polybot.domain.enums import Route
+from polybot.logic.enums import Route
 
 
 class Settings(BaseSettings):

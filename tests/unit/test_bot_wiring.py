@@ -1,6 +1,6 @@
+from polybot.bot.handlers import BotContext, build_bot, build_dispatcher, router
+from polybot.bot.keyboards import MapCb, OppCb, card_keyboard
 from polybot.settings import Settings
-from polybot.telegram.bot import BotContext, build_bot, build_dispatcher, router
-from polybot.telegram.keyboards import MapCb, OppCb, card_keyboard
 
 
 def test_dispatcher_wiring_and_admin_check() -> None:
@@ -32,8 +32,8 @@ def test_callback_data_fits_telegram_limit() -> None:
 def test_main_menu_and_min_profit_parsing() -> None:
     from decimal import Decimal
 
-    from polybot.telegram.bot import parse_min_profit
-    from polybot.telegram.keyboards import MenuCb, main_menu_keyboard
+    from polybot.bot.handlers import parse_min_profit
+    from polybot.bot.keyboards import MenuCb, main_menu_keyboard
 
     kb = main_menu_keyboard()
     actions = [MenuCb.unpack(b.callback_data).action for row in kb.inline_keyboard for b in row if b.callback_data]
@@ -47,8 +47,8 @@ def test_main_menu_and_min_profit_parsing() -> None:
 def test_subscription_min_profit_filter() -> None:
     from decimal import Decimal
 
-    from polybot.storage.models import Subscription
-    from polybot.storage.repo import subscription_accepts
+    from polybot.data.repo import subscription_accepts
+    from polybot.data.tables import Subscription
 
     payload = {
         "verdict": "signal",
@@ -72,14 +72,14 @@ async def test_budget_rejects_nonfinite_values_without_crashing() -> None:
 
     from aiogram.filters import CommandObject
 
-    from polybot.telegram.bot import cmd_budget
+    from polybot.bot.handlers import cmd_budget
 
     session = MagicMock()
     session.__aenter__.return_value = session
     ctx = BotContext(Settings(odds_api_key=None), sessions=MagicMock(return_value=session))
     sub = SimpleNamespace(budget=Decimal(100))
     message = SimpleNamespace(from_user=SimpleNamespace(id=1), chat=SimpleNamespace(id=1), answer=AsyncMock())
-    with patch("polybot.telegram.bot.repo.ensure_subscription", new=AsyncMock(return_value=sub)):
+    with patch("polybot.bot.handlers.repo.ensure_subscription", new=AsyncMock(return_value=sub)):
         for value in ("NaN", "sNaN", "Infinity", "-Infinity"):
             await cmd_budget(message, CommandObject(command="budget", args=value), ctx)  # type: ignore[arg-type]
             assert "Budget must be between" in message.answer.call_args.args[0]
